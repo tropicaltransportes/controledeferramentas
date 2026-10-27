@@ -7,6 +7,7 @@ import {
   usuarioDaRequisicao,
 } from './autenticacao';
 import { cabecalhosCors } from './cors';
+import { tratarDevolucoes } from './devolucoes';
 import type { Env } from './env';
 import { tratarFerramentas } from './ferramentas';
 import { tratarFuncionarios } from './funcionarios';
@@ -39,7 +40,8 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
     return entrar(request, env, relogio);
   }
 
-  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname) && !ehRotaFuncionarios(pathname) && pathname !== '/retiradas') {
+  const ehRotaDeRegistro = pathname === '/retiradas' || pathname === '/devolucoes';
+  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname) && !ehRotaFuncionarios(pathname) && !ehRotaDeRegistro) {
     return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
   }
 
@@ -58,6 +60,10 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
 
   if (pathname === '/retiradas') {
     return tratarRetiradas(request, env, relogio, usuario);
+  }
+
+  if (pathname === '/devolucoes') {
+    return tratarDevolucoes(request, env, relogio, usuario);
   }
 
   if (request.method === 'GET' && pathname === '/eu') {

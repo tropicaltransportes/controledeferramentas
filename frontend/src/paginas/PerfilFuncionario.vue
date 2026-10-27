@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { chamarApi, ErroApi } from '../api';
+import { abrirDevolucao } from '../devolucao';
+import { dataHora, type RetiradaHistorico, rotuloResultado } from '../historico';
 import { type Funcionario, iniciaisDe } from '../funcionarios';
 import { abrirRetirada, versaoRetiradas } from '../retirada';
 import { sessao } from '../sessao';
@@ -17,6 +19,15 @@ interface FerramentaEmPosse {
 
 interface PerfilDoFuncionario extends Funcionario {
   ferramentasEmPosse: FerramentaEmPosse[];
+  historico: RetiradaHistorico[];
+}
+
+function classeResultado(resultado: RetiradaHistorico['resultado']): string {
+  if (resultado === 'ok') {
+    return 'b-disp';
+  }
+
+  return resultado === 'com_problema' ? 'b-prob' : 'b-fora';
 }
 
 type Aba = 'ferramentas' | 'historico';
@@ -154,12 +165,32 @@ async function alterarSituacao() {
 
       <div class="card-b">
         <ul v-if="aba === 'ferramentas' && perfil.ferramentasEmPosse.length" class="posse-lista">
-          <li v-for="ferramenta in perfil.ferramentasEmPosse" :key="ferramenta.numero">
+          <li v-for="ferramenta in perfil.ferramentasEmPosse" :key="ferramenta.numero" class="posse-linha">
             <RouterLink :to="`/ferramentas/${encodeURIComponent(ferramenta.numero)}`" class="posse-item">
               <span class="num">{{ ferramenta.numero }}</span>
               <b>{{ ferramenta.nome }}</b>
               <span class="small muted">desde {{ dataCurta(ferramenta.retiradaEm) }}</span>
             </RouterLink>
+            <button
+              v-if="podeRetirar"
+              type="button"
+              class="outline"
+              @click="abrirDevolucao({ numero: ferramenta.numero })"
+            >
+              Devolver
+            </button>
+          </li>
+        </ul>
+        <ul v-else-if="aba === 'historico' && perfil.historico.length" class="posse-lista">
+          <li v-for="item in perfil.historico" :key="item.id" class="posse-linha">
+            <div class="posse-item">
+              <span class="num">{{ item.ferramenta.numero }}</span>
+              <b>{{ item.ferramenta.nome }}</b>
+              <span class="small muted">
+                retirada em {{ dataHora(item.retiradaEm) }}<template v-if="item.devolvidaEm"> · devolvida em {{ dataHora(item.devolvidaEm) }}</template>
+              </span>
+            </div>
+            <span class="badge" :class="classeResultado(item.resultado)">{{ rotuloResultado(item.resultado) }}</span>
           </li>
         </ul>
         <p v-else class="muted">{{ abaAtual.vazio }}</p>
@@ -205,12 +236,20 @@ async function alterarSituacao() {
   padding: 0;
 }
 
+.posse-linha {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
 .posse-item {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--line);
 }
 </style>

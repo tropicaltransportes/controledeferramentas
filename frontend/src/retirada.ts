@@ -7,7 +7,7 @@ export const retirada = reactive<{ aberta: boolean; funcionarioId: number | null
   numero: null,
 });
 
-/** Sobe a cada Retirada registrada. As telas que mostram posse observam este número e recarregam. */
+/** Sobe a cada Retirada ou Devolução registrada. As telas que mostram posse observam este número e recarregam. */
 export const versaoRetiradas = ref(0);
 
 /** Aviso curto depois de uma ação (toast). Some sozinho. */

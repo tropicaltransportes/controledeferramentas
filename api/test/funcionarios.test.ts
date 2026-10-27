@@ -143,6 +143,7 @@ describe('GET /funcionarios/:id e PUT /funcionarios/:id', () => {
       ativo: true,
       retiradasAbertas: 0,
       ferramentasEmPosse: [],
+      historico: [],
     });
   });
 

@@ -1,4 +1,5 @@
 import type { Env } from './env';
+import { type RetiradaHistorico, retiradasDoFuncionario } from './historico';
 import { contarAbertasPorFuncionario, ferramentasEmPosseDe } from './retiradas';
 
 interface LinhaFuncionario {
@@ -19,6 +20,8 @@ interface Funcionario {
 
 interface PerfilFuncionario extends Funcionario {
   ferramentasEmPosse: Awaited<ReturnType<typeof ferramentasEmPosseDe>>;
+  /** Todas as Retiradas do Funcionário, da mais recente para a mais antiga. */
+  historico: RetiradaHistorico[];
 }
 
 /** Roteia /funcionarios. Quem chega aqui já está autenticado, e os dois papéis podem cadastrar e editar. */
@@ -65,6 +68,7 @@ async function obter(id: number, env: Env): Promise<Response> {
   const perfil: PerfilFuncionario = {
     ...paraFuncionario(linha, abertas),
     ferramentasEmPosse: await ferramentasEmPosseDe(env, id),
+    historico: await retiradasDoFuncionario(env, id),
   };
 
   return Response.json(perfil);

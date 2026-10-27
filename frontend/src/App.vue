@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { chamarApi } from './api';
+import ModalDevolucao from './components/ModalDevolucao.vue';
 import ModalRetirada from './components/ModalRetirada.vue';
+import { abrirDevolucao, devolucao } from './devolucao';
 import { abrirRetirada, aviso, retirada } from './retirada';
 import { esquecerSessao, rotuloPapel, sessao } from './sessao';
 
@@ -60,7 +62,13 @@ async function sair() {
             <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></svg>
             <span class="lbl">Retirada</span>
           </button>
-          <button type="button" class="outline" aria-label="Devolução">
+          <button
+            v-if="sessao.usuario?.papel === 'almoxarife'"
+            type="button"
+            class="outline"
+            aria-label="Devolução"
+            @click="abrirDevolucao()"
+          >
             <svg viewBox="0 0 24 24"><path d="M17 7 7 17M16 17H7V8" /></svg>
             <span class="lbl">Devolução</span>
           </button>
@@ -85,6 +93,7 @@ async function sair() {
       :funcionario-id="retirada.funcionarioId"
       :numero="retirada.numero"
     />
+    <ModalDevolucao v-if="devolucao.aberta" :numero="devolucao.numero" />
     <div v-if="aviso" class="toast" role="status">{{ aviso }}</div>
   </div>
 </template>

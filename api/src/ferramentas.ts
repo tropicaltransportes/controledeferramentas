@@ -1,4 +1,5 @@
 import type { Env } from './env';
+import { problemasDaFerramenta, resumirUso, retiradasDaFerramenta } from './historico';
 import type { Relogio } from './relogio';
 import { buscarPosses, type Posse } from './retiradas';
 
@@ -123,6 +124,16 @@ export async function tratarFerramentas(request: Request, env: Env, relogio: Rel
     return request.method === 'GET' ? lerFoto(numero, env) : enviarFoto(numero, request, env, relogio);
   }
 
+  const numeroDoHistorico = pathname.match(/^\/ferramentas\/([^/]+)\/historico$/)?.[1];
+  if (numeroDoHistorico && request.method === 'GET') {
+    const numero = decodificar(numeroDoHistorico);
+    if (numero === null) {
+      return naoEncontrada();
+    }
+
+    return historico(numero, env, relogio);
+  }
+
   const segmento = pathname.match(/^\/ferramentas\/([^/]+)$/)?.[1];
   if (segmento && (request.method === 'GET' || request.method === 'PUT')) {
     const numero = decodificar(segmento);
@@ -187,6 +198,20 @@ async function obter(numero: string, env: Env): Promise<Response> {
   }
 
   return Response.json(paraFerramenta(linha, (await buscarPosses(env, numero)).get(numero)));
+}
+
+/** Aba Histórico e aba Problemas da Ficha, além dos números de uso do Resumo. */
+async function historico(numero: string, env: Env, relogio: Relogio): Promise<Response> {
+  if (!(await buscarLinha(numero, env))) {
+    return naoEncontrada();
+  }
+
+  const [retiradas, problemas] = await Promise.all([
+    retiradasDaFerramenta(env, numero),
+    problemasDaFerramenta(env, numero),
+  ]);
+
+  return Response.json({ numero, retiradas, problemas, resumo: resumirUso(retiradas, problemas, relogio) });
 }
 
 async function cadastrar(request: Request, env: Env, relogio: Relogio): Promise<Response> {

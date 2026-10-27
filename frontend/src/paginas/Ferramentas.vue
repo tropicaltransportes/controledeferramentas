@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { chamarApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
 import FotoFerramenta from '../components/FotoFerramenta.vue';
+import { abrirDevolucao } from '../devolucao';
+import { sessao } from '../sessao';
 import { versaoRetiradas } from '../retirada';
 import {
   carregarCategorias,
@@ -15,6 +17,7 @@ import {
 } from '../ferramentas';
 
 const router = useRouter();
+const podeDevolver = computed(() => sessao.usuario?.papel === 'almoxarife');
 
 const situacao = ref<Filtro>('todas');
 const categoria = ref('');
@@ -161,31 +164,39 @@ function aoSalvar(ferramenta: Ferramenta) {
   </div>
 
   <div v-else-if="dados" class="card lista">
-    <RouterLink
-      v-for="ferramenta in dados.itens"
-      :key="ferramenta.numero"
-      :to="`/ferramentas/${encodeURIComponent(ferramenta.numero)}`"
-      class="linha"
-    >
-      <span class="miniatura">
-        <FotoFerramenta
-          :numero="ferramenta.numero"
-          :tem-foto="ferramenta.temFoto"
-          :atualizado-em="ferramenta.atualizadoEm"
-          :alt="`Foto de ${ferramenta.nome}`"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />
-          </svg>
-        </FotoFerramenta>
-      </span>
-      <span class="num">{{ ferramenta.numero }}</span>
-      <b class="nome">{{ ferramenta.nome }}</b>
-      <span class="small muted">{{ ferramenta.categoria }}</span>
-      <span class="badge" :class="situacaoDe(ferramenta.situacao).classe">
-        {{ situacaoDe(ferramenta.situacao).rotulo }}
-      </span>
-    </RouterLink>
+    <div v-for="ferramenta in dados.itens" :key="ferramenta.numero" class="linha-wrap">
+      <RouterLink
+        :to="`/ferramentas/${encodeURIComponent(ferramenta.numero)}`"
+        class="linha"
+      >
+        <span class="miniatura">
+          <FotoFerramenta
+            :numero="ferramenta.numero"
+            :tem-foto="ferramenta.temFoto"
+            :atualizado-em="ferramenta.atualizadoEm"
+            :alt="`Foto de ${ferramenta.nome}`"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />
+            </svg>
+          </FotoFerramenta>
+        </span>
+        <span class="num">{{ ferramenta.numero }}</span>
+        <b class="nome">{{ ferramenta.nome }}</b>
+        <span class="small muted">{{ ferramenta.categoria }}</span>
+        <span class="badge" :class="situacaoDe(ferramenta.situacao).classe">
+          {{ situacaoDe(ferramenta.situacao).rotulo }}
+        </span>
+      </RouterLink>
+      <button
+        v-if="podeDevolver && ferramenta.responsavel"
+        type="button"
+        class="outline"
+        @click="abrirDevolucao({ numero: ferramenta.numero })"
+      >
+        Devolver
+      </button>
+    </div>
   </div>
 
   <div v-else-if="carregando" class="card vazio">Carregando…</div>
@@ -228,6 +239,33 @@ function aoSalvar(ferramenta: Ferramenta) {
 
 .linha:hover {
   background: var(--bg);
+}
+
+/* A linha é um link; o botão Devolver fica ao lado, fora do link. */
+.linha-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.linha-wrap:last-child {
+  border-bottom: 0;
+}
+
+.linha-wrap:hover {
+  background: var(--bg);
+}
+
+.linha-wrap .linha {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.linha-wrap .linha:hover {
+  background: transparent;
 }
 
 .linha .nome {

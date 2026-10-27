@@ -153,7 +153,7 @@ const ROTULO_ESTADO: Record<string, string> = {
 };
 
 /** Número digitado (`23`, `f-023`, `F-023`) no formato F-NNN, ou null quando não é um Número. */
-function normalizarNumero(valor: unknown): string | null {
+export function normalizarNumero(valor: unknown): string | null {
   if (typeof valor !== 'string') {
     return null;
   }

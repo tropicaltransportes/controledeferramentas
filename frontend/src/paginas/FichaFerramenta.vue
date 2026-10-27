@@ -4,7 +4,9 @@ import { RouterLink } from 'vue-router';
 import { chamarApi, ErroApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
 import FotoFerramenta from '../components/FotoFerramenta.vue';
+import { abrirDevolucao } from '../devolucao';
 import { type Ferramenta, situacaoDe } from '../ferramentas';
+import { dataHora, type HistoricoFerramenta, type RetiradaHistorico, rotuloResultado, tempoFora } from '../historico';
 import { abrirRetirada, versaoRetiradas } from '../retirada';
 import { sessao } from '../sessao';
 
@@ -19,6 +21,7 @@ const ABAS: { valor: Aba; rotulo: string; vazio: string }[] = [
 ];
 
 const ficha = ref<Ferramenta | null>(null);
+const historico = ref<HistoricoFerramenta | null>(null);
 const carregando = ref(true);
 const naoEncontrada = ref(false);
 const erro = ref('');
@@ -39,13 +42,18 @@ watch(
   () => [props.numero, versaoRetiradas.value] as const,
   async ([numero]) => {
     ficha.value = null;
+    historico.value = null;
     naoEncontrada.value = false;
     erro.value = '';
     aba.value = 'resumo';
     carregando.value = true;
 
     try {
-      ficha.value = await chamarApi<Ferramenta>(`/ferramentas/${encodeURIComponent(numero)}`);
+      const caminho = `/ferramentas/${encodeURIComponent(numero)}`;
+      [ficha.value, historico.value] = await Promise.all([
+        chamarApi<Ferramenta>(caminho),
+        chamarApi<HistoricoFerramenta>(`${caminho}/historico`),
+      ]);
     } catch (falha) {
       if (falha instanceof ErroApi && falha.status === 404) {
         naoEncontrada.value = true;
@@ -58,6 +66,20 @@ watch(
   },
   { immediate: true },
 );
+
+// Resumo mostra só os últimos registros; as abas Histórico e Problemas mostram tudo.
+const retiradasDaAba = computed<RetiradaHistorico[]>(() => {
+  const retiradas = historico.value?.retiradas ?? [];
+  return aba.value === 'resumo' ? retiradas.slice(0, 3) : retiradas;
+});
+
+function classeResultado(resultado: RetiradaHistorico['resultado']): string {
+  if (resultado === 'ok') {
+    return 'b-disp';
+  }
+
+  return resultado === 'com_problema' ? 'b-prob' : 'b-fora';
+}
 
 function aoSalvar(salva: Ferramenta) {
   ficha.value = salva;
@@ -130,6 +152,15 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
           Registrar Retirada
         </button>
 
+        <button
+          v-if="podeRetirar && ficha.responsavel"
+          type="button"
+          class="outline retirar"
+          @click="abrirDevolucao({ numero: ficha.numero })"
+        >
+          Devolver
+        </button>
+
         <dl class="specs">
           <template v-for="[rotulo, valor] in itensTecnicos" :key="rotulo">
             <dt>{{ rotulo }}</dt>
@@ -157,8 +188,54 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
         </button>
       </div>
 
-      <div class="card-b">
-        <p class="empty" role="tabpanel">{{ abaAtual.vazio }}</p>
+      <div class="card-b" role="tabpanel">
+        <dl v-if="aba === 'resumo' && historico" class="numeros">
+          <div>
+            <dt>Retiradas</dt>
+            <dd>{{ historico.resumo.totalRetiradas }}</dd>
+          </div>
+          <div>
+            <dt>Problemas</dt>
+            <dd>{{ historico.resumo.totalProblemas }}</dd>
+          </div>
+          <div>
+            <dt>Funcionários que usaram</dt>
+            <dd>{{ historico.resumo.funcionariosQueUsaram }}</dd>
+          </div>
+          <div>
+            <dt>Tempo total fora</dt>
+            <dd>{{ tempoFora(historico.resumo.tempoForaMs) }}</dd>
+          </div>
+        </dl>
+
+        <template v-if="aba === 'problemas'">
+          <ul v-if="historico?.problemas.length" class="registros">
+            <li v-for="problema in historico.problemas" :key="problema.id" class="registro">
+              <b>{{ problema.descricao }}</b>
+              <span class="small muted">
+                {{ problema.responsavel.nome }} · registrado em {{ dataHora(problema.registradoEm) }}
+              </span>
+              <span class="badge" :class="problema.destino ? 'b-off' : 'b-prob'">
+                {{ problema.destino ? (problema.destino === 'liberada' ? 'Liberada' : 'Baixada') : 'Aguardando destino' }}
+              </span>
+            </li>
+          </ul>
+          <p v-else class="empty">{{ abaAtual.vazio }}</p>
+        </template>
+
+        <template v-else>
+          <h3 v-if="aba === 'resumo'" class="subtitulo">Últimos registros</h3>
+          <ul v-if="retiradasDaAba.length" class="registros">
+            <li v-for="retirada in retiradasDaAba" :key="retirada.id" class="registro">
+              <b>{{ retirada.funcionario.nome }}</b>
+              <span class="small muted">
+                retirada em {{ dataHora(retirada.retiradaEm) }}<template v-if="retirada.devolvidaEm"> · devolvida em {{ dataHora(retirada.devolvidaEm) }}</template>
+              </span>
+              <span class="badge" :class="classeResultado(retirada.resultado)">{{ rotuloResultado(retirada.resultado) }}</span>
+            </li>
+          </ul>
+          <p v-else class="empty">{{ abaAtual.vazio }}</p>
+        </template>
       </div>
     </section>
   </div>
@@ -210,6 +287,63 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
 .ph-grande svg {
   width: 56px;
   height: 56px;
+}
+
+.numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.numeros div {
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.numeros dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.numeros dd {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.subtitulo {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.registros {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.registro {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.registro:last-child {
+  border-bottom: 0;
+}
+
+.registro .badge {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.registro .small {
+  grid-column: 1 / -1;
 }
 
 .editar {
