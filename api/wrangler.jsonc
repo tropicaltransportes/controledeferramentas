@@ -7,8 +7,7 @@
     {
       "binding": "DB",
       "database_name": "controle-ferramentas",
-      // Preencher com o ID do D1 criado na Cloudflare (ver README, seção Infraestrutura).
-      "database_id": "PREENCHER-COM-ID-DO-D1",
+      "database_id": "1c382fed-6b25-41e9-9479-5dec69727843",
       "migrations_dir": "migrations"
     }
   ]
