@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "controle-ferramentas-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "controle-ferramentas",
+      "database_id": "1c382fed-6b25-41e9-9479-5dec69727843",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
