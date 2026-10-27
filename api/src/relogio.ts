@@ -8,7 +8,10 @@ export type Relogio = () => Date;
  */
 export function relogioDoAmbiente(env: Env): Relogio {
   if (env.AMBIENTE === 'teste' && env.RELOGIO_TESTE) {
-    const horaFixa = new Date(env.RELOGIO_TESTE).getTime();
+    const horaFixa = new Date(env.RELOGIO_TESTE);
+    if (Number.isNaN(horaFixa.getTime())) {
+      throw new Error(`RELOGIO_TESTE não é uma data válida: "${env.RELOGIO_TESTE}"`);
+    }
     return () => new Date(horaFixa);
   }
 

@@ -13,7 +13,8 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Não cancela um deploy em andamento: interromper no meio deixa o Pages em estado intermediário.
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -28,6 +29,14 @@ jobs:
       - name: Instalar dependências
         working-directory: frontend
         run: npm ci
+      - name: Conferir URL da API
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: |
+          if [ -z "$VITE_API_URL" ]; then
+            echo "::error::A variável VITE_API_URL não está definida (Settings → Secrets and variables → Actions → Variables)."
+            exit 1
+          fi
       - name: Gerar build
         working-directory: frontend
         env:

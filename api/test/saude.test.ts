@@ -1,5 +1,7 @@
-import { SELF } from 'cloudflare:test';
+import { SELF, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
+import { atender } from '../src/app';
+import type { Env } from '../src/env';
 
 const ORIGEM_PAGES = 'https://tropicaltransportes.github.io';
 const ORIGEM_DEV = 'http://localhost:5173';
@@ -58,5 +60,19 @@ describe('GET /saude', () => {
     const resposta = await SELF.fetch('https://api.test/nao-existe');
 
     expect(resposta.status).toBe(404);
+  });
+
+  it('responde 503 com banco erro quando o D1 falha', async () => {
+    const bancoQuebrado = {
+      prepare: () => ({
+        first: () => Promise.reject(new Error('D1 indisponível')),
+      }),
+    } as unknown as D1Database;
+    const envComBancoQuebrado: Env = { ...env, DB: bancoQuebrado };
+
+    const resposta = await atender(new Request('https://api.test/saude'), envComBancoQuebrado);
+
+    expect(resposta.status).toBe(503);
+    expect(await resposta.json()).toMatchObject({ status: 'erro', banco: 'erro' });
   });
 });

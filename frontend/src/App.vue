@@ -34,14 +34,18 @@ const logo = `${import.meta.env.BASE_URL}logo.png`;
       <header class="top">
         <div class="search">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-          <input type="search" placeholder="Buscar ferramenta ou funcionário…" />
+          <input
+            type="search"
+            aria-label="Buscar ferramenta ou funcionário"
+            placeholder="Buscar ferramenta ou funcionário…"
+          />
         </div>
         <div class="acts">
-          <button type="button" class="primary">
+          <button type="button" class="primary" aria-label="Retirada">
             <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></svg>
             <span class="lbl">Retirada</span>
           </button>
-          <button type="button" class="outline">
+          <button type="button" class="outline" aria-label="Devolução">
             <svg viewBox="0 0 24 24"><path d="M17 7 7 17M16 17H7V8" /></svg>
             <span class="lbl">Devolução</span>
           </button>

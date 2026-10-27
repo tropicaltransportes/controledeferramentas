@@ -30,7 +30,7 @@ npm install
 npm run dev
 ```
 
-O frontend lê a URL da API da variável `VITE_API_URL`. Sem ela, usa `http://localhost:8787`.
+A variável `VITE_API_URL` define a URL da API no build. Ela ainda não é usada pela casca; as próximas fatias a lerão. O workflow do Pages recusa publicar sem ela.
 
 ## Testes
 
