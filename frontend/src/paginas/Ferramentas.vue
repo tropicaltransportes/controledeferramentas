@@ -3,6 +3,7 @@ import { onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { chamarApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
+import FotoFerramenta from '../components/FotoFerramenta.vue';
 import {
   carregarCategorias,
   FILTROS,
@@ -136,9 +137,16 @@ function aoSalvar(ferramenta: Ferramenta) {
       :class="{ atr: ferramenta.situacao === 'atrasada' }"
     >
       <div class="ph">
-        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />
-        </svg>
+        <FotoFerramenta
+          :numero="ferramenta.numero"
+          :tem-foto="ferramenta.temFoto"
+          :atualizado-em="ferramenta.atualizadoEm"
+          :alt="`Foto de ${ferramenta.nome}`"
+        >
+          <svg class="icone" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />
+          </svg>
+        </FotoFerramenta>
         <span class="badge" :class="situacaoDe(ferramenta.situacao).classe">
           {{ situacaoDe(ferramenta.situacao).rotulo }}
         </span>
@@ -158,6 +166,18 @@ function aoSalvar(ferramenta: Ferramenta) {
       :to="`/ferramentas/${encodeURIComponent(ferramenta.numero)}`"
       class="linha"
     >
+      <span class="miniatura">
+        <FotoFerramenta
+          :numero="ferramenta.numero"
+          :tem-foto="ferramenta.temFoto"
+          :atualizado-em="ferramenta.atualizadoEm"
+          :alt="`Foto de ${ferramenta.nome}`"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />
+          </svg>
+        </FotoFerramenta>
+      </span>
       <span class="num">{{ ferramenta.numero }}</span>
       <b class="nome">{{ ferramenta.nome }}</b>
       <span class="small muted">{{ ferramenta.categoria }}</span>
@@ -194,7 +214,7 @@ function aoSalvar(ferramenta: Ferramenta) {
 
 .linha {
   display: grid;
-  grid-template-columns: 90px 1fr auto auto;
+  grid-template-columns: 44px 90px 1fr auto auto;
   align-items: center;
   gap: 14px;
   padding: 14px 18px;
@@ -222,7 +242,11 @@ function aoSalvar(ferramenta: Ferramenta) {
   }
 
   .linha {
-    grid-template-columns: 70px 1fr;
+    grid-template-columns: 44px 70px 1fr;
+  }
+
+  .linha .miniatura {
+    grid-row: span 2;
   }
 
   .linha .small {
@@ -230,7 +254,7 @@ function aoSalvar(ferramenta: Ferramenta) {
   }
 
   .linha .badge {
-    grid-column: 2;
+    grid-column: 3;
     justify-self: start;
   }
 }

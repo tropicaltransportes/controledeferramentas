@@ -15,15 +15,19 @@ export class ErroApi extends Error {
 interface OpcoesChamada {
   metodo?: 'GET' | 'POST' | 'PUT';
   corpo?: unknown;
+  /** Arquivo enviado como corpo bruto (foto); o tipo vem do próprio arquivo. */
+  arquivo?: Blob;
   /** Chamadas de login não mandam token e não derrubam sessão quando a senha está errada. */
   autenticado?: boolean;
 }
 
-export async function chamarApi<T>(caminho: string, opcoes: OpcoesChamada = {}): Promise<T> {
-  const { metodo = 'GET', corpo, autenticado = true } = opcoes;
+async function chamar(caminho: string, opcoes: OpcoesChamada): Promise<Response> {
+  const { metodo = 'GET', corpo, arquivo, autenticado = true } = opcoes;
   const cabecalhos: Record<string, string> = {};
 
-  if (corpo !== undefined) {
+  if (arquivo) {
+    cabecalhos['Content-Type'] = arquivo.type;
+  } else if (corpo !== undefined) {
     cabecalhos['Content-Type'] = 'application/json';
   }
 
@@ -35,7 +39,7 @@ export async function chamarApi<T>(caminho: string, opcoes: OpcoesChamada = {}):
   const resposta = await fetch(`${URL_API}${caminho}`, {
     method: metodo,
     headers: cabecalhos,
-    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    body: arquivo ?? (corpo === undefined ? undefined : JSON.stringify(corpo)),
   });
 
   if (resposta.status === 401 && autenticado) {
@@ -48,9 +52,20 @@ export async function chamarApi<T>(caminho: string, opcoes: OpcoesChamada = {}):
     throw new ErroApi(resposta.status, dados.erro ?? 'Não foi possível concluir a ação.');
   }
 
+  return resposta;
+}
+
+export async function chamarApi<T>(caminho: string, opcoes: OpcoesChamada = {}): Promise<T> {
+  const resposta = await chamar(caminho, opcoes);
+
   if (resposta.status === 204) {
     return undefined as T;
   }
 
   return (await resposta.json()) as T;
+}
+
+/** Resposta que não é JSON (a foto da Ferramenta). Precisa de token, por isso não serve direto a uma tag img. */
+export async function chamarApiBinario(caminho: string): Promise<Blob> {
+  return (await chamar(caminho, {})).blob();
 }

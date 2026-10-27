@@ -36,6 +36,12 @@ const SITUACAO_DO_ESTADO: Record<Estado, Situacao> = {
 
 const FORMATO_NUMERO = /^F-\d{3,}$/;
 
+// Foto acima deste tamanho é recusada. O navegador reduz a imagem antes do envio para caber.
+const TAMANHO_MAXIMO_FOTO = 200 * 1024;
+const MENSAGEM_FOTO_GRANDE = 'A foto passa de 200 KB. Reduza a imagem e tente de novo';
+// Só formatos raster: SVG pode carregar script e não entra como foto.
+const TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
+
 interface LinhaFerramenta {
   numero: string;
   nome: string;
@@ -46,14 +52,15 @@ interface LinhaFerramenta {
   numero_serie: string | null;
   aquisicao: string | null;
   observacoes: string | null;
+  foto_tipo: string | null;
   estado: Estado;
   criado_em: string;
   atualizado_em: string;
 }
 
-// A foto (BLOB) fica de fora: nenhuma tela de listagem ou Ficha a usa nesta fatia.
+// Os bytes da foto (BLOB) ficam de fora: só a rota de foto os lê.
 const COLUNAS = `numero, nome, categoria, marca, modelo, especificacao, numero_serie,
-  aquisicao, observacoes, estado, criado_em, atualizado_em`;
+  aquisicao, observacoes, foto_tipo, estado, criado_em, atualizado_em`;
 
 interface Ferramenta {
   numero: string;
@@ -65,6 +72,7 @@ interface Ferramenta {
   numeroSerie: string | null;
   aquisicao: string | null;
   observacoes: string | null;
+  temFoto: boolean;
   situacao: Situacao;
   criadoEm: string;
   atualizadoEm: string;
@@ -100,6 +108,16 @@ export async function tratarFerramentas(request: Request, env: Env, relogio: Rel
 
   if (request.method === 'POST' && pathname === '/ferramentas') {
     return cadastrar(request, env, relogio);
+  }
+
+  const numeroDaFoto = pathname.match(/^\/ferramentas\/([^/]+)\/foto$/)?.[1];
+  if (numeroDaFoto && (request.method === 'GET' || request.method === 'PUT')) {
+    const numero = decodificar(numeroDaFoto);
+    if (numero === null) {
+      return naoEncontrada();
+    }
+
+    return request.method === 'GET' ? lerFoto(numero, env) : enviarFoto(numero, request, env, relogio);
   }
 
   const segmento = pathname.match(/^\/ferramentas\/([^/]+)$/)?.[1];
@@ -246,6 +264,49 @@ async function editar(numero: string, request: Request, env: Env, relogio: Relog
   return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta));
 }
 
+/** Troca a foto da Ferramenta. O corpo é a própria imagem; o Content-Type dela é guardado junto. */
+async function enviarFoto(numero: string, request: Request, env: Env, relogio: Relogio): Promise<Response> {
+  if (!(await buscarLinha(numero, env))) {
+    return naoEncontrada();
+  }
+
+  const tipo = (request.headers.get('Content-Type') ?? '').split(';')[0].trim().toLowerCase();
+  if (!TIPOS_FOTO.includes(tipo)) {
+    return erroDeValidacao('Envie a foto em JPEG, PNG ou WebP');
+  }
+
+  // Recusa antes de ler o corpo quando o próprio cliente já diz que é grande demais.
+  if (Number(request.headers.get('Content-Length') ?? 0) > TAMANHO_MAXIMO_FOTO) {
+    return erroDeValidacao(MENSAGEM_FOTO_GRANDE);
+  }
+
+  const bytes = await request.arrayBuffer();
+  if (bytes.byteLength > TAMANHO_MAXIMO_FOTO) {
+    return erroDeValidacao(MENSAGEM_FOTO_GRANDE);
+  }
+
+  await env.DB.prepare('UPDATE ferramentas SET foto = ?, foto_tipo = ?, atualizado_em = ? WHERE numero = ?')
+    .bind(new Uint8Array(bytes), tipo, relogio().toISOString(), numero)
+    .run();
+
+  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta));
+}
+
+async function lerFoto(numero: string, env: Env): Promise<Response> {
+  const linha = await env.DB.prepare('SELECT foto, foto_tipo FROM ferramentas WHERE numero = ?')
+    .bind(numero)
+    .first<{ foto: ArrayBuffer | number[] | null; foto_tipo: string | null }>();
+
+  if (!linha || linha.foto === null || linha.foto_tipo === null) {
+    return naoEncontrada();
+  }
+
+  // O D1 devolve o BLOB como lista de bytes (ou ArrayBuffer, conforme o ambiente): Uint8Array aceita os dois.
+  return new Response(new Uint8Array(linha.foto), {
+    headers: { 'Content-Type': linha.foto_tipo, 'X-Content-Type-Options': 'nosniff' },
+  });
+}
+
 /**
  * Dados da Ficha vindos do corpo, ou a mensagem do primeiro campo inválido.
  * Campo ausente do corpo mantém o valor atual (`atuais`); campo presente vazio vira null.
@@ -372,6 +433,7 @@ function paraFerramenta(linha: LinhaFerramenta): Ferramenta {
     numeroSerie: linha.numero_serie,
     aquisicao: linha.aquisicao,
     observacoes: linha.observacoes,
+    temFoto: linha.foto_tipo !== null,
     situacao: SITUACAO_DO_ESTADO[linha.estado],
     criadoEm: linha.criado_em,
     atualizadoEm: linha.atualizado_em,

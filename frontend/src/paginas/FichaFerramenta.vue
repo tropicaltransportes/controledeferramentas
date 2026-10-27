@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { chamarApi, ErroApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
+import FotoFerramenta from '../components/FotoFerramenta.vue';
 import { type Ferramenta, situacaoDe } from '../ferramentas';
 
 const props = defineProps<{ numero: string }>();
@@ -87,9 +88,16 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
     <section class="card">
       <div class="card-b">
         <div class="ph-grande">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />
-          </svg>
+          <FotoFerramenta
+            :numero="ficha.numero"
+            :tem-foto="ficha.temFoto"
+            :atualizado-em="ficha.atualizadoEm"
+            :alt="`Foto de ${ficha.nome}`"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z" />
+            </svg>
+          </FotoFerramenta>
         </div>
 
         <h2 class="nome-ficha">{{ ficha.nome }}</h2>
@@ -161,6 +169,8 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
   border-radius: 12px;
   display: grid;
   place-items: center;
+  position: relative;
+  overflow: hidden;
   background: var(--brand-soft);
   color: var(--brand);
 }

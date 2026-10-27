@@ -67,6 +67,7 @@ describe('POST /ferramentas', () => {
       numeroSerie: null,
       aquisicao: null,
       observacoes: null,
+      temFoto: false,
       situacao: 'no_almoxarifado',
       criadoEm: '2026-10-27T12:00:00.000Z',
       atualizadoEm: '2026-10-27T12:00:00.000Z',
@@ -131,6 +132,88 @@ describe('POST /ferramentas', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(cadastro('F-004')),
+    });
+
+    expect(resposta.status).toBe(401);
+  });
+});
+
+function enviarFoto(numero: string, corpo: Uint8Array | string, tipo = 'image/jpeg'): Promise<Response> {
+  return SELF.fetch(`https://api.test/ferramentas/${numero}/foto`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': tipo },
+    body: corpo,
+  });
+}
+
+function lerFoto(numero: string): Promise<Response> {
+  return SELF.fetch(`https://api.test/ferramentas/${numero}/foto`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+describe('PUT /ferramentas/:numero/foto', () => {
+  beforeEach(async () => {
+    await comToken(token, 'POST', '/ferramentas', cadastro('F-030'));
+  });
+
+  it('guarda a foto de até 200 KB e a devolve igual, com o tipo enviado', async () => {
+    const foto = new Uint8Array(200 * 1024).map((_, indice) => indice % 251);
+
+    const resposta = await enviarFoto('F-030', foto);
+    const lida = await lerFoto('F-030');
+
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toMatchObject({ numero: 'F-030', temFoto: true });
+    expect(lida.status).toBe(200);
+    expect(lida.headers.get('Content-Type')).toBe('image/jpeg');
+    expect(new Uint8Array(await lida.arrayBuffer())).toEqual(foto);
+  });
+
+  it('recusa foto acima de 200 KB com 422 e não guarda nada', async () => {
+    const resposta = await enviarFoto('F-030', new Uint8Array(200 * 1024 + 1));
+
+    expect(resposta.status).toBe(422);
+    expect(await (await comToken(token, 'GET', '/ferramentas/F-030')).json()).toMatchObject({ temFoto: false });
+  });
+
+  it('recusa arquivo que não é imagem com 422', async () => {
+    const resposta = await enviarFoto('F-030', 'não sou uma foto', 'text/plain');
+
+    expect(resposta.status).toBe(422);
+  });
+
+  it('recusa SVG e outros formatos que não são foto raster, com 422', async () => {
+    const svg = await enviarFoto('F-030', '<svg onload="alert(1)"></svg>', 'image/svg+xml');
+
+    expect(svg.status).toBe(422);
+  });
+
+  it('troca a foto anterior pela nova', async () => {
+    await enviarFoto('F-030', new Uint8Array([1, 2, 3]), 'image/jpeg');
+
+    await enviarFoto('F-030', new Uint8Array([9, 8]), 'image/png');
+    const lida = await lerFoto('F-030');
+
+    expect(lida.headers.get('Content-Type')).toBe('image/png');
+    expect(new Uint8Array(await lida.arrayBuffer())).toEqual(new Uint8Array([9, 8]));
+  });
+
+  it('responde 404 quando a Ferramenta não tem foto ou não existe', async () => {
+    const semFoto = await lerFoto('F-030');
+    const semFichaEnvio = await enviarFoto('F-998', new Uint8Array([1]));
+    const semFichaLeitura = await lerFoto('F-998');
+
+    expect(semFoto.status).toBe(404);
+    expect(semFichaEnvio.status).toBe(404);
+    expect(semFichaLeitura.status).toBe(404);
+  });
+
+  it('exige sessão', async () => {
+    const resposta = await SELF.fetch('https://api.test/ferramentas/F-030/foto', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/jpeg' },
+      body: new Uint8Array([1]),
     });
 
     expect(resposta.status).toBe(401);

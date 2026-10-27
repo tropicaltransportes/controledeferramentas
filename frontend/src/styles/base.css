@@ -520,6 +520,60 @@ textarea {
   gap: 2px;
 }
 
+/* Foto da Ferramenta: preenche o quadro do cartão, da Ficha, da lista e do formulário */
+.foto-ferramenta {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.miniatura {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.miniatura svg {
+  width: 24px;
+  height: 24px;
+}
+
+.foto-campo {
+  display: grid;
+  gap: 10px;
+}
+
+.foto-quadro {
+  position: relative;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.foto-quadro .icone {
+  width: 48px;
+  height: 48px;
+}
+
+.foto-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Ficha da Ferramenta: ficha técnica à esquerda, abas à direita */
 .detail {
   display: grid;

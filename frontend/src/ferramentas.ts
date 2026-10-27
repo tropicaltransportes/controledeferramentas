@@ -1,5 +1,5 @@
 // Vocabulário e formato das Ferramentas. A situação e as categorias chegam da API; aqui só fica o rótulo de exibição.
-import { chamarApi } from './api';
+import { chamarApi, chamarApiBinario } from './api';
 
 let categorias: Promise<string[]> | null = null;
 
@@ -51,9 +51,19 @@ export interface Ferramenta {
   numeroSerie: string | null;
   aquisicao: string | null;
   observacoes: string | null;
+  temFoto: boolean;
   situacao: Situacao;
   criadoEm: string;
   atualizadoEm: string;
+}
+
+/** Envia a foto (já reduzida) e devolve a Ferramenta com `temFoto` atualizado. */
+export function enviarFoto(numero: string, foto: Blob): Promise<Ferramenta> {
+  return chamarApi<Ferramenta>(`/ferramentas/${encodeURIComponent(numero)}/foto`, { metodo: 'PUT', arquivo: foto });
+}
+
+export function buscarFoto(numero: string): Promise<Blob> {
+  return chamarApiBinario(`/ferramentas/${encodeURIComponent(numero)}/foto`);
 }
 
 export interface ListaFerramentas {
