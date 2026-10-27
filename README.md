@@ -30,7 +30,18 @@ npm install
 npm run dev
 ```
 
-A variável `VITE_API_URL` define a URL da API no build. Ela ainda não é usada pela casca; as próximas fatias a lerão. O workflow do Pages recusa publicar sem ela.
+A variável `VITE_API_URL` define a URL da API no build (sem ela, o frontend usa `http://localhost:8787`). O workflow do Pages recusa publicar sem ela.
+
+## Contas
+
+Não existe cadastro público: Almoxarife e Gestor são criados pelo comando administrativo `api/scripts/criar-usuario.ts`. A senha vai pela variável `SENHA_NOVA` (nunca como argumento) e só o hash é gravado.
+
+```bash
+cd api
+SENHA_NOVA='uma-senha-forte' node scripts/criar-usuario.ts --email ana@exemplo.com --nome "Ana" --papel almoxarife --local
+```
+
+Sem `--local`, o comando grava no D1 remoto (é preciso estar autenticado no Wrangler). Rodar o mesmo comando de novo para um e-mail existente redefine a senha e encerra as sessões dessa conta.
 
 ## Testes
 
