@@ -1,0 +1,556 @@
+<!doctype html>
+<!--
+  PROTÓTIPO DESCARTÁVEL — não é código de produção.
+  Pergunta: como devem ser as telas principais (o que está fora agora, Retirada, Devolução)?
+  Três variantes na mesma página, trocadas pela barra flutuante (ou ←/→), via ?variant=A|B|C.
+  Dados falsos, em memória: recarregar a página volta tudo ao início.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipo – Controle de Ferramentas</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --ink: #1d2230; --muted: #6b7280; --line: #e3e6eb;
+    --brand: #1f5fbf; --brand-soft: #e7effb;
+    --red: #c62828; --red-soft: #fdecec; --amber: #b26a00; --amber-soft: #fff4e0;
+    --green: #1e7d45; --green-soft: #e6f5ec; --gray-soft: #eef0f3;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); padding-bottom: 90px; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 8px 14px; color: var(--ink); }
+  button.primary { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+  button.ok { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+  button.danger { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
+  button.ghost { background: transparent; }
+  button:disabled { opacity: .45; cursor: default; }
+  input, select, textarea { font: inherit; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); width: 100%; }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--ink); color: #fff; }
+  .topbar b { font-size: 17px; }
+  .topbar .who { margin-left: auto; font-size: 13px; opacity: .75; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  .muted { color: var(--muted); }
+  .tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+  .tag.disp { background: var(--green-soft); color: var(--green); }
+  .tag.fora { background: var(--brand-soft); color: var(--brand); }
+  .tag.atr { background: var(--red-soft); color: var(--red); }
+  .tag.prob { background: var(--amber-soft); color: var(--amber); }
+  .tag.off { background: var(--gray-soft); color: var(--muted); }
+  .num { font-family: ui-monospace, Consolas, monospace; font-weight: 700; }
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 10px; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(15,20,30,.45); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px; z-index: 40; overflow: auto; }
+  .modal { background: var(--card); border-radius: 14px; width: 100%; max-width: 620px; padding: 22px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+  .modal h2 { margin: 0 0 14px; font-size: 20px; }
+  .modal .step { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 8px; }
+  .modal .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; max-height: 220px; overflow: auto; }
+  .chip { border-radius: 99px; padding: 7px 14px; }
+  .chip.sel { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .cart li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .cart ul { list-style: none; margin: 8px 0 0; padding: 0; }
+  .cart .x { margin-left: auto; padding: 2px 10px; }
+
+  /* ===== Variante A: Painel por Funcionário ===== */
+  .a-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; margin-bottom: 20px; }
+  .a-stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 18px; min-width: 140px; }
+  .a-stat .n { font-size: 28px; font-weight: 800; }
+  .a-stat.red .n { color: var(--red); } .a-stat.amber .n { color: var(--amber); }
+  .a-btns { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .a-btns button { padding: 14px 22px; font-size: 16px; }
+  .a-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .a-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .a-card.has-atr { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+  .a-card header { padding: 12px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+  .a-card header .av { width: 34px; height: 34px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; font-weight: 700; }
+  .a-card.has-atr header .av { background: var(--red-soft); color: var(--red); }
+  .a-card header b { font-size: 16px; }
+  .a-card header .tag { margin-left: auto; }
+  .a-tool { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--line); }
+  .a-tool:last-child { border-bottom: 0; }
+  .a-tool .t { flex: 1; min-width: 0; }
+  .a-tool .t small { display: block; }
+  .a-tool.atr .t small { color: var(--red); font-weight: 600; }
+  .a-tool button { padding: 5px 10px; font-size: 13px; }
+  .a-prob { margin-top: 26px; }
+  .a-prob h3 { font-size: 15px; margin: 0 0 10px; }
+  .a-prob .row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .a-prob .row .t { flex: 1; min-width: 200px; }
+
+  /* ===== Variante B: Balcão (um campo só) ===== */
+  .b-hero { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 28px; text-align: center; }
+  .b-hero label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+  .b-hero input.big { font-size: 28px; text-align: center; padding: 16px; max-width: 520px; font-family: ui-monospace, Consolas, monospace; letter-spacing: .04em; }
+  .b-hint { margin-top: 10px; font-size: 13px; }
+  .b-result { margin: 18px auto 0; max-width: 760px; text-align: left; }
+  .b-tool { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 12px; background: var(--bg); }
+  .b-tool .ico { width: 54px; height: 54px; border-radius: 10px; background: var(--brand-soft); display: grid; place-items: center; font-size: 26px; }
+  .b-tool .info { flex: 1; }
+  .b-tool .info b { font-size: 18px; }
+  .b-cart { margin-top: 14px; }
+  .b-cart .item { display: inline-flex; align-items: center; gap: 6px; background: var(--brand-soft); color: var(--brand); border-radius: 99px; padding: 5px 6px 5px 12px; margin: 0 6px 6px 0; font-weight: 600; }
+  .b-cart .item button { border: 0; background: transparent; padding: 0 6px; color: var(--brand); }
+  .b-funcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+  .b-funcs button { padding: 14px 10px; font-weight: 600; }
+  .b-big { display: flex; gap: 12px; margin-top: 14px; }
+  .b-big button { flex: 1; padding: 18px; font-size: 17px; }
+  .b-list { margin-top: 24px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .b-list h3 { margin: 0; padding: 14px 18px; font-size: 15px; border-bottom: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; background: #fafbfc; }
+  tr.atr td { background: var(--red-soft); }
+  tr.atr td.when { color: var(--red); font-weight: 700; }
+
+  /* ===== Variante C: Lista de Ferramentas ===== */
+  .c-layout { display: grid; grid-template-columns: 240px 1fr; gap: 18px; }
+  .c-side { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; align-self: start; position: sticky; top: 12px; }
+  .c-side h4 { margin: 12px 8px 6px; font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: .06em; }
+  .c-side button { display: flex; gap: 8px; width: 100%; border: 0; background: transparent; text-align: left; padding: 8px 10px; border-radius: 8px; }
+  .c-side button.sel { background: var(--brand-soft); color: var(--brand); font-weight: 700; }
+  .c-side button span { margin-left: auto; color: var(--muted); font-weight: 600; }
+  .c-side button.red span { color: var(--red); }
+  .c-main { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+  .c-tools { display: flex; gap: 10px; padding: 12px; border-bottom: 1px solid var(--line); }
+  .c-bulk { display: flex; gap: 10px; align-items: center; padding: 12px; background: var(--brand-soft); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .c-bulk select { width: auto; min-width: 200px; }
+  .c-main td.sel { width: 36px; }
+  .c-main tr.row-atr td { background: var(--red-soft); }
+  .c-inline { display: flex; gap: 6px; flex-wrap: wrap; }
+  .c-inline button { padding: 4px 10px; font-size: 13px; }
+  .c-scroll { overflow-x: auto; }
+
+  /* Barra do protótipo (não faz parte do design) */
+  .proto-bar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; background: #ff2d87; color: #fff; padding: 6px; border-radius: 99px; box-shadow: 0 8px 24px rgba(0,0,0,.35); z-index: 60; font-weight: 700; }
+  .proto-bar button { background: rgba(255,255,255,.2); border: 0; color: #fff; border-radius: 99px; width: 38px; height: 38px; padding: 0; font-size: 18px; }
+  .proto-bar .lbl { padding: 0 14px; white-space: nowrap; font-size: 14px; }
+  .proto-bar .reset { width: auto; padding: 0 12px; font-size: 12px; }
+
+  @media (max-width: 760px) {
+    .wrap { padding: 14px 12px; }
+    .a-btns { margin-left: 0; width: 100%; } .a-btns button { flex: 1; }
+    .a-stat { flex: 1; min-width: 0; padding: 10px 12px; } .a-stat .n { font-size: 22px; }
+    .c-layout { grid-template-columns: 1fr; } .c-side { position: static; display: flex; flex-wrap: wrap; } .c-side h4 { width: 100%; } .c-side button { width: auto; }
+    .b-hero { padding: 18px 14px; } .b-hero input.big { font-size: 22px; }
+    .hide-sm { display: none; }
+    .proto-bar .lbl { font-size: 12px; padding: 0 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar"><b>🔧 Ferramentas do Almoxarifado</b><span class="who" id="who"></span></div>
+<div id="app"></div>
+<div class="proto-bar" title="Barra do protótipo – não faz parte do design">
+  <button id="prev" aria-label="Variante anterior">←</button>
+  <span class="lbl" id="vlabel"></span>
+  <button id="next" aria-label="Próxima variante">→</button>
+  <button class="reset" id="reset" title="Voltar aos dados iniciais">reiniciar</button>
+</div>
+
+<script>
+// ---------- Dados falsos em memória ----------
+const VARIANTS = [
+  { key: 'A', name: 'Painel por Funcionário' },
+  { key: 'B', name: 'Balcão – um campo só' },
+  { key: 'C', name: 'Lista de Ferramentas' },
+];
+let tools, funcs, retiradas, seq;
+
+function seed() {
+  const T = [
+    ['F-001','Torquímetro 40–200 Nm','Medição'], ['F-002','Torquímetro 5–60 Nm','Medição'], ['F-003','Scanner automotivo','Diagnóstico'],
+    ['F-004','Multímetro digital','Elétrica'], ['F-005','Macaco jacaré 3 t','Elevação'], ['F-006','Macaco jacaré 3 t','Elevação'],
+    ['F-007','Cavalete 6 t (par)','Elevação'], ['F-008','Extrator de rolamento','Mecânica'], ['F-009','Jogo de soquetes 1/2"','Mecânica'],
+    ['F-010','Jogo de soquetes 3/4"','Mecânica'], ['F-011','Parafusadeira de impacto','Pneumática'], ['F-012','Lixadeira angular','Elétrica'],
+    ['F-013','Caneta de polaridade','Elétrica'], ['F-014','Saca-pino','Mecânica'], ['F-015','Compressor de mola','Suspensão'],
+    ['F-016','Medidor de compressão','Diagnóstico'], ['F-017','Carregador de bateria','Elétrica'], ['F-018','Talha 1 t','Elevação'],
+    ['F-019','Paquímetro digital','Medição'], ['F-020','Relógio comparador','Medição'], ['F-021','Kit sangria de freio','Freios'],
+    ['F-022','Extrator de bico injetor','Motor'], ['F-023','Chave de roda pneumática','Pneumática'], ['F-024','Lanterna de inspeção','Geral'],
+  ];
+  tools = T.map(([num, nome, cat]) => ({ num, nome, cat, estado: 'disponivel', obs: '' }));
+  funcs = ['João Silva','Pedro Santos','Marcos Lima','Rafael Costa','Diego Alves','Carlos Souza','André Rocha','Lucas Pereira','Bruno Dias']
+    .map((nome, i) => ({ id: i + 1, nome, ativo: true }));
+  funcs.push({ id: 99, nome: 'Fábio Nunes', ativo: false });
+  retiradas = []; seq = 1;
+  const ago = (min) => new Date(Date.now() - min * 60000);
+  const r = (num, funcId, min) => retiradas.push({ id: seq++, num, funcId, inicio: ago(min), fim: null, resultado: null, obs: '' });
+  r('F-003', 1, 95); r('F-009', 1, 95); r('F-001', 2, 40);
+  r('F-005', 3, 60 * 26); r('F-019', 3, 180); r('F-011', 4, 20);
+  r('F-015', 5, 60 * 72); r('F-004', 6, 300); r('F-021', 6, 300); r('F-017', 99, 60 * 24 * 9);
+  tools.find(t => t.num === 'F-012').estado = 'com_problema';
+  tools.find(t => t.num === 'F-012').obs = 'Escova gasta, não liga. Voltou com Lucas Pereira.';
+}
+
+// ---------- Regras (glossário) ----------
+const fimExpediente = (d) => { // seg–sex 19h, sáb 13h, dom fechado
+  const e = new Date(d); const dow = e.getDay();
+  if (dow === 0) { e.setHours(0, 0, 0, 0); return e; }
+  e.setHours(dow === 6 ? 13 : 19, 0, 0, 0); return e;
+};
+const aberta = (num) => retiradas.find(r => r.num === num && !r.fim);
+const isAtrasada = (r) => !r.fim && Date.now() > fimExpediente(r.inicio).getTime();
+const func = (id) => funcs.find(f => f.id === id);
+const tool = (num) => tools.find(t => t.num === num);
+const statusOf = (t) => {
+  if (t.estado === 'baixada') return { k: 'off', txt: 'Baixada' };
+  if (t.estado === 'extraviada') return { k: 'off', txt: 'Extraviada' };
+  if (t.estado === 'com_problema') return { k: 'prob', txt: 'Com Problema' };
+  const r = aberta(t.num);
+  if (r) return isAtrasada(r) ? { k: 'atr', txt: 'Atrasada', r } : { k: 'fora', txt: 'Fora', r };
+  return { k: 'disp', txt: 'No almoxarifado' };
+};
+const disponivel = (t) => t.estado === 'disponivel' && !aberta(t.num);
+
+function retirar(funcId, nums) {
+  nums.forEach(num => retiradas.push({ id: seq++, num, funcId, inicio: new Date(), fim: null, resultado: null, obs: '' }));
+  toast(`Retirada registrada: ${nums.join(', ')} → ${func(funcId).nome}`);
+}
+function devolver(num, ok, obs = '') {
+  const r = aberta(num); if (!r) return;
+  r.fim = new Date(); r.resultado = ok ? 'ok' : 'com_problema'; r.obs = obs;
+  if (!ok) { tool(num).estado = 'com_problema'; tool(num).obs = obs; }
+  toast(ok ? `Devolução OK: ${num}` : `Devolução Com Problema: ${num}`);
+}
+function extraviar(num) {
+  const r = aberta(num); if (!r) return;
+  r.fim = new Date(); r.resultado = 'extraviada'; tool(num).estado = 'extraviada';
+  toast(`${num} marcada como Extraviada (Responsável: ${func(r.funcId).nome})`);
+}
+function liberar(num) { tool(num).estado = 'disponivel'; tool(num).obs = ''; toast(`${num} Liberada`); }
+function baixar(num) { tool(num).estado = 'baixada'; toast(`${num} Baixada`); }
+
+// ---------- Utilidades ----------
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hhmm = (d) => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+function quando(d) {
+  const min = Math.round((Date.now() - d) / 60000);
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  if (d >= hoje) return min < 60 ? `há ${min} min` : `há ${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}`;
+  const dias = Math.ceil((hoje - d) / 86400000);
+  if (dias === 1) return `desde ontem ${hhmm(d)}`;
+  return `há ${dias} dias (${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})`;
+}
+const iniciais = (n) => n.split(' ').map(p => p[0]).slice(0, 2).join('');
+let toastTimer;
+function toast(msg) {
+  document.querySelector('.toast')?.remove();
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.remove(), 2600);
+}
+function findTool(q) {
+  q = q.trim().toUpperCase(); if (!q) return null;
+  if (/^\d+$/.test(q)) q = 'F-' + q.padStart(3, '0');
+  if (/^F\d+$/.test(q)) q = 'F-' + q.slice(1).padStart(3, '0');
+  return tools.find(t => t.num === q) || null;
+}
+function grupos() { // retiradas abertas agrupadas por Funcionário, atrasados primeiro
+  const m = new Map();
+  retiradas.filter(r => !r.fim).forEach(r => { if (!m.has(r.funcId)) m.set(r.funcId, []); m.get(r.funcId).push(r); });
+  return [...m.entries()].map(([id, rs]) => ({ f: func(id), rs: rs.sort((a, b) => a.inicio - b.inicio), atr: rs.filter(isAtrasada).length }))
+    .sort((a, b) => b.atr - a.atr || a.f.nome.localeCompare(b.f.nome));
+}
+const toolOptions = () => tools.map(t => `<option value="${t.num} · ${esc(t.nome)}">`).join('');
+
+// ---------- Modais compartilhados (usados pela variante A) ----------
+function modal(html) {
+  const bg = document.createElement('div'); bg.className = 'modal-bg';
+  bg.innerHTML = `<div class="modal">${html}</div>`;
+  bg.addEventListener('click', e => { if (e.target === bg) bg.remove(); });
+  document.body.appendChild(bg); return bg;
+}
+function modalRetirada(preFunc) {
+  let funcId = preFunc || null; const cart = [];
+  const bg = modal(`
+    <h2>Nova Retirada</h2>
+    <div class="step">1. Quem está retirando?</div>
+    <input id="mfq" placeholder="Filtrar funcionário…">
+    <div class="chips" id="mfs" style="margin-top:8px"></div>
+    <div class="step">2. Quais ferramentas? (número ou nome)</div>
+    <input id="mtq" list="mtl" placeholder="Ex.: 23, F-023 ou torquímetro – Enter para adicionar">
+    <datalist id="mtl">${toolOptions()}</datalist>
+    <div class="muted" id="mterr" style="font-size:13px;margin-top:6px"></div>
+    <div class="cart"><ul id="mcart"></ul></div>
+    <div class="actions"><button class="ghost" id="mcancel">Cancelar</button><button class="primary" id="mok">Registrar Retirada</button></div>`);
+  const $ = (s) => bg.querySelector(s);
+  const drawF = () => {
+    const q = $('#mfq').value.toLowerCase();
+    $('#mfs').innerHTML = funcs.filter(f => f.ativo && f.nome.toLowerCase().includes(q))
+      .map(f => `<button class="chip ${f.id === funcId ? 'sel' : ''}" data-id="${f.id}">${esc(f.nome)}</button>`).join('');
+  };
+  const drawC = () => {
+    $('#mcart').innerHTML = cart.map(n => `<li><span class="num">${n}</span>${esc(tool(n).nome)}<button class="x" data-n="${n}">remover</button></li>`).join('')
+      || '<li class="muted">Nenhuma ferramenta adicionada.</li>';
+    $('#mok').disabled = !funcId || !cart.length;
+    $('#mok').textContent = cart.length > 1 ? `Registrar Retirada (${cart.length})` : 'Registrar Retirada';
+  };
+  $('#mfq').oninput = drawF;
+  $('#mfs').onclick = e => { const b = e.target.closest('[data-id]'); if (b) { funcId = +b.dataset.id; drawF(); drawC(); $('#mtq').focus(); } };
+  const add = () => {
+    const t = findTool($('#mtq').value.split('·')[0]) || tools.find(t => t.nome.toLowerCase() === $('#mtq').value.trim().toLowerCase());
+    if (!t) { $('#mterr').textContent = 'Ferramenta não encontrada.'; return; }
+    const st = statusOf(t);
+    if (!disponivel(t)) { $('#mterr').innerHTML = `<span style="color:var(--red)">${t.num} não está disponível (${st.txt}${st.r ? ' com ' + esc(func(st.r.funcId).nome) : ''}).</span>`; return; }
+    if (!cart.includes(t.num)) cart.push(t.num);
+    $('#mtq').value = ''; $('#mterr').textContent = ''; drawC();
+  };
+  $('#mtq').onkeydown = e => { if (e.key === 'Enter') add(); };
+  $('#mtq').onchange = () => { if ($('#mtq').value.includes('·')) add(); };
+  $('#mcart').onclick = e => { const b = e.target.closest('[data-n]'); if (b) { cart.splice(cart.indexOf(b.dataset.n), 1); drawC(); } };
+  $('#mcancel').onclick = () => bg.remove();
+  $('#mok').onclick = () => { retirar(funcId, cart); bg.remove(); render(); };
+  drawF(); drawC(); (funcId ? $('#mtq') : $('#mfq')).focus();
+}
+function modalDevolucao(preNum) {
+  let num = preNum || null; let ok = true;
+  const bg = modal(`
+    <h2>Devolução</h2>
+    <div class="step">Ferramenta</div>
+    <input id="dq" list="dtl" placeholder="Número ou nome – Enter">
+    <datalist id="dtl">${tools.filter(t => aberta(t.num)).map(t => `<option value="${t.num} · ${esc(t.nome)}">`).join('')}</datalist>
+    <div id="dinfo" style="margin-top:10px"></div>
+    <div class="step">Como voltou?</div>
+    <div class="b-big" style="margin-top:0"><button id="dok" class="ok">✓ OK</button><button id="dprob">⚠ Com Problema</button></div>
+    <textarea id="dobs" rows="2" placeholder="O que aconteceu? (obrigatório se Com Problema)" style="display:none;margin-top:10px"></textarea>
+    <div class="actions"><button class="ghost" id="dcancel">Cancelar</button><button class="primary" id="dgo">Registrar Devolução</button></div>`);
+  const $ = (s) => bg.querySelector(s);
+  const draw = () => {
+    const r = num && aberta(num);
+    $('#dinfo').innerHTML = !num ? '' : r
+      ? `<div class="b-tool"><div class="info"><span class="num">${num}</span> ${esc(tool(num).nome)}<br><span class="muted">Com <b>${esc(func(r.funcId).nome)}</b> · ${quando(r.inicio)}</span> ${isAtrasada(r) ? '<span class="tag atr">Atrasada</span>' : ''}</div></div>`
+      : `<span style="color:var(--red)">${num} não está fora.</span>`;
+    $('#dok').className = ok ? 'ok' : ''; $('#dprob').className = ok ? '' : 'danger';
+    $('#dobs').style.display = ok ? 'none' : 'block';
+    $('#dgo').disabled = !r || (!ok && !$('#dobs').value.trim());
+  };
+  $('#dq').onkeydown = e => { if (e.key === 'Enter') { num = findTool($('#dq').value.split('·')[0])?.num || $('#dq').value.trim().toUpperCase(); draw(); } };
+  $('#dq').onchange = () => { const t = findTool($('#dq').value.split('·')[0]); if (t) { num = t.num; draw(); } };
+  $('#dok').onclick = () => { ok = true; draw(); };
+  $('#dprob').onclick = () => { ok = false; draw(); $('#dobs').focus(); };
+  $('#dobs').oninput = draw;
+  $('#dcancel').onclick = () => bg.remove();
+  $('#dgo').onclick = () => { devolver(num, ok, $('#dobs').value.trim()); bg.remove(); render(); };
+  if (num) $('#dq').value = num;
+  draw(); $(num ? '#dok' : '#dq').focus();
+}
+
+// ---------- Variante A: Painel por Funcionário ----------
+function renderA(app) {
+  const g = grupos();
+  const fora = retiradas.filter(r => !r.fim).length;
+  const atr = retiradas.filter(isAtrasada).length;
+  const prob = tools.filter(t => t.estado === 'com_problema');
+  app.innerHTML = `<div class="wrap">
+    <div class="a-head">
+      <div class="a-stat"><div class="n">${fora}</div><div class="muted">fora agora</div></div>
+      <div class="a-stat red"><div class="n">${atr}</div><div class="muted">atrasadas</div></div>
+      <div class="a-stat amber"><div class="n">${prob.length}</div><div class="muted">com problema</div></div>
+      <div class="a-btns"><button class="primary" id="aret">＋ Nova Retirada</button><button id="adev">↩ Devolução</button></div>
+    </div>
+    <div class="a-grid">${g.map(({ f, rs, atr }) => `
+      <div class="a-card ${atr ? 'has-atr' : ''}">
+        <header><div class="av">${iniciais(f.nome)}</div><div><b>${esc(f.nome)}</b>${f.ativo ? '' : ' <span class="tag off">Inativo</span>'}<br>
+          <span class="muted" style="font-size:13px">${rs.length} ferramenta${rs.length > 1 ? 's' : ''}</span></div>
+          ${atr ? `<span class="tag atr">${atr} atrasada${atr > 1 ? 's' : ''}</span>` : ''}</header>
+        ${rs.map(r => `<div class="a-tool ${isAtrasada(r) ? 'atr' : ''}">
+          <div class="t"><span class="num">${r.num}</span> ${esc(tool(r.num).nome)}<small class="muted">${quando(r.inicio)}</small></div>
+          <button data-dev="${r.num}">Devolver</button></div>`).join('')}
+        ${f.ativo ? `<div class="a-tool"><button class="ghost" data-ret="${f.id}" style="border:0;color:var(--brand)">＋ retirar mais para ${esc(f.nome.split(' ')[0])}</button></div>` : ''}
+      </div>`).join('') || '<p class="muted">Nada fora. Tudo no almoxarifado. 👌</p>'}
+    </div>
+    ${prob.length ? `<div class="a-prob"><h3>⚠ Com Problema – fora de circulação</h3>${prob.map(t => `
+      <div class="row"><div class="t"><span class="num">${t.num}</span> ${esc(t.nome)}<br><span class="muted" style="font-size:13px">${esc(t.obs)}</span></div>
+      <button data-lib="${t.num}">Liberar</button><button data-baixa="${t.num}">Baixar</button></div>`).join('')}</div>` : ''}
+  </div>`;
+  app.querySelector('#aret').onclick = () => modalRetirada();
+  app.querySelector('#adev').onclick = () => modalDevolucao();
+  app.onclick = e => {
+    const d = e.target.closest('[data-dev]'); if (d) return modalDevolucao(d.dataset.dev);
+    const r = e.target.closest('[data-ret]'); if (r) return modalRetirada(+r.dataset.ret);
+    const l = e.target.closest('[data-lib]'); if (l) { liberar(l.dataset.lib); return render(); }
+    const b = e.target.closest('[data-baixa]'); if (b) { baixar(b.dataset.baixa); return render(); }
+  };
+}
+
+// ---------- Variante B: Balcão (um campo só) ----------
+let bCart = [], bCurrent = null, bProb = false;
+function renderB(app) {
+  app.onclick = null;
+  app.innerHTML = `<div class="wrap">
+    <div class="b-hero">
+      <label>Digite ou bipe o número da ferramenta. O sistema sabe se é <b>Retirada</b> ou <b>Devolução</b>.</label>
+      <input class="big" id="bq" list="btl" placeholder="F-023" autocomplete="off">
+      <datalist id="btl">${toolOptions()}</datalist>
+      <div class="b-hint muted">Dica: só o número também funciona (ex.: 23). Esc limpa.</div>
+      <div class="b-result" id="bres"></div>
+    </div>
+    <div class="b-list" id="blist"></div>
+  </div>`;
+  const q = app.querySelector('#bq');
+  q.onkeydown = e => {
+    if (e.key === 'Escape') { bCart = []; bCurrent = null; q.value = ''; drawB(); }
+    if (e.key === 'Enter') lookup();
+  };
+  q.onchange = () => { if (q.value.includes('·')) lookup(); };
+  function lookup() {
+    const t = findTool(q.value.split('·')[0]);
+    q.value = '';
+    if (!t) { bCurrent = { erro: true }; return drawB(); }
+    if (disponivel(t)) { if (!bCart.includes(t.num)) bCart.push(t.num); bCurrent = null; }
+    else { bCurrent = { num: t.num }; bProb = false; }
+    drawB();
+  }
+  drawB(); q.focus();
+}
+function drawB() {
+  const res = document.getElementById('bres'); if (!res) return;
+  const focusQ = () => document.getElementById('bq')?.focus();
+  let html = '';
+  if (bCurrent?.erro) html += `<p style="color:var(--red);text-align:center">Ferramenta não encontrada.</p>`;
+  if (bCurrent?.num) {
+    const t = tool(bCurrent.num), st = statusOf(t), r = st.r;
+    html += `<div class="b-tool"><div class="ico">↩</div><div class="info"><span class="num">${t.num}</span> <b>${esc(t.nome)}</b><br>
+      ${r ? `<span>Está com <b>${esc(func(r.funcId).nome)}</b> · ${quando(r.inicio)}</span> <span class="tag ${st.k}">${st.txt}</span>`
+          : `<span class="tag ${st.k}">${st.txt}</span> <span class="muted">${esc(t.obs || '')}</span>`}</div></div>`;
+    if (r) {
+      html += `<div class="step" style="margin-top:14px;font-weight:700">DEVOLUÇÃO – como voltou?</div>
+        <div class="b-big"><button class="ok" id="bok">✓ Voltou OK</button><button class="${bProb ? 'danger' : ''}" id="bprob">⚠ Com Problema</button></div>
+        ${bProb ? `<div style="margin-top:10px;display:flex;gap:8px"><input id="bobs" placeholder="O que aconteceu?"><button class="danger" id="bprobgo">Registrar</button></div>` : ''}
+        <div style="margin-top:10px;text-align:right"><button class="ghost" id="bextr" style="font-size:13px">Marcar como Extraviada</button></div>`;
+    } else if (t.estado === 'com_problema') {
+      html += `<div class="b-big"><button id="blib">Liberar</button><button id="bbaixa">Baixar</button></div>`;
+    }
+  }
+  if (bCart.length) {
+    html += `<div class="b-cart"><div class="step" style="font-weight:700;margin-bottom:8px">RETIRADA – ${bCart.length} ferramenta${bCart.length > 1 ? 's' : ''} no balcão</div>
+      ${bCart.map(n => `<span class="item"><span class="num">${n}</span> ${esc(tool(n).nome)}<button data-rm="${n}">✕</button></span>`).join('')}
+      <div class="muted" style="font-size:13px;margin:6px 0 4px">Bipe mais ou escolha para quem:</div>
+      <div class="b-funcs">${funcs.filter(f => f.ativo).map(f => `<button data-f="${f.id}">${esc(f.nome)}</button>`).join('')}</div></div>`;
+  }
+  res.innerHTML = html;
+  res.onclick = e => {
+    const rm = e.target.closest('[data-rm]'); if (rm) { bCart = bCart.filter(n => n !== rm.dataset.rm); drawB(); return focusQ(); }
+    const f = e.target.closest('[data-f]'); if (f) { retirar(+f.dataset.f, bCart); bCart = []; drawB(); return focusQ(); }
+    const id = e.target.id;
+    if (id === 'bok') { devolver(bCurrent.num, true); bCurrent = null; drawB(); focusQ(); }
+    if (id === 'bprob') { bProb = true; drawB(); document.getElementById('bobs').focus(); }
+    if (id === 'bprobgo') { const o = document.getElementById('bobs').value.trim(); if (!o) return; devolver(bCurrent.num, false, o); bCurrent = null; drawB(); focusQ(); }
+    if (id === 'bextr') { extraviar(bCurrent.num); bCurrent = null; drawB(); focusQ(); }
+    if (id === 'blib') { liberar(bCurrent.num); bCurrent = null; drawB(); focusQ(); }
+    if (id === 'bbaixa') { baixar(bCurrent.num); bCurrent = null; drawB(); focusQ(); }
+  };
+  const abertas = retiradas.filter(r => !r.fim).sort((a, b) => isAtrasada(b) - isAtrasada(a) || a.inicio - b.inicio);
+  document.getElementById('blist').innerHTML = `<h3>Fora agora (${abertas.length}) · <span style="color:var(--red)">${abertas.filter(isAtrasada).length} atrasadas</span></h3>
+    <table><thead><tr><th>Ferramenta</th><th>Com quem</th><th>Desde</th></tr></thead><tbody>
+    ${abertas.map(r => `<tr class="${isAtrasada(r) ? 'atr' : ''}"><td><span class="num">${r.num}</span> ${esc(tool(r.num).nome)}</td>
+      <td>${esc(func(r.funcId).nome)}${func(r.funcId).ativo ? '' : ' <span class="tag off">Inativo</span>'}</td><td class="when">${quando(r.inicio)}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ---------- Variante C: Lista de Ferramentas ----------
+let cFilter = 'todas', cFunc = null, cSel = new Set(), cQ = '', cProbNum = null;
+function renderC(app) {
+  app.onclick = null;
+  const list = tools.filter(t => t.estado !== 'baixada' || cFilter === 'baixadas');
+  const counts = {
+    todas: list.length,
+    disp: tools.filter(disponivel).length,
+    fora: tools.filter(t => aberta(t.num)).length,
+    atr: retiradas.filter(isAtrasada).length,
+    prob: tools.filter(t => t.estado === 'com_problema').length,
+    baixadas: tools.filter(t => t.estado === 'baixada' || t.estado === 'extraviada').length,
+  };
+  let rows = tools.filter(t => {
+    const st = statusOf(t);
+    if (cFilter === 'todas' && (t.estado === 'baixada' || t.estado === 'extraviada')) return false;
+    if (cFilter === 'disp' && st.k !== 'disp') return false;
+    if (cFilter === 'fora' && !st.r) return false;
+    if (cFilter === 'atr' && st.k !== 'atr') return false;
+    if (cFilter === 'prob' && st.k !== 'prob') return false;
+    if (cFilter === 'baixadas' && st.k !== 'off') return false;
+    if (cFunc && st.r?.funcId !== cFunc) return false;
+    if (cQ && !(t.num + ' ' + t.nome + ' ' + t.cat).toLowerCase().includes(cQ.toLowerCase())) return false;
+    return true;
+  });
+  const order = { atr: 0, fora: 1, prob: 2, disp: 3, off: 4 };
+  rows.sort((a, b) => order[statusOf(a).k] - order[statusOf(b).k] || a.num.localeCompare(b.num));
+  cSel = new Set([...cSel].filter(n => disponivel(tool(n))));
+  const g = grupos();
+  const fb = (k, label, cls = '') => `<button class="${cFilter === k && !cFunc ? 'sel' : ''} ${cls}" data-flt="${k}">${label}<span>${counts[k]}</span></button>`;
+  app.innerHTML = `<div class="wrap"><div class="c-layout">
+    <aside class="c-side">
+      <h4>Situação</h4>
+      ${fb('todas', 'Todas')}${fb('disp', 'No almoxarifado')}${fb('fora', 'Fora agora')}${fb('atr', 'Atrasadas', 'red')}${fb('prob', 'Com Problema')}${fb('baixadas', 'Baixadas / Extraviadas')}
+      <h4>Com quem está</h4>
+      ${g.map(({ f, rs, atr }) => `<button class="${cFunc === f.id ? 'sel' : ''} ${atr ? 'red' : ''}" data-fn="${f.id}">${esc(f.nome)}<span>${rs.length}</span></button>`).join('')}
+    </aside>
+    <section class="c-main">
+      <div class="c-tools"><input id="cq" placeholder="Buscar por número, nome ou categoria…" value="${esc(cQ)}"></div>
+      ${cSel.size ? `<div class="c-bulk"><b>${cSel.size} selecionada${cSel.size > 1 ? 's' : ''}</b> → retirar para
+        <select id="cfn"><option value="">escolha o funcionário…</option>${funcs.filter(f => f.ativo).map(f => `<option value="${f.id}">${esc(f.nome)}</option>`).join('')}</select>
+        <button class="primary" id="cgo" disabled>Registrar Retirada</button><button class="ghost" id="cclr">limpar</button></div>`
+        : `<div class="c-bulk" style="background:transparent"><span class="muted" style="font-size:13px">Marque as ferramentas disponíveis para registrar uma Retirada.</span></div>`}
+      <div class="c-scroll"><table><thead><tr><th></th><th>Nº</th><th>Ferramenta</th><th class="hide-sm">Categoria</th><th>Situação</th><th>Com quem / desde</th><th></th></tr></thead><tbody>
+      ${rows.map(t => { const st = statusOf(t); return `<tr class="${st.k === 'atr' ? 'row-atr' : ''}">
+        <td class="sel">${disponivel(t) ? `<input type="checkbox" data-sel="${t.num}" ${cSel.has(t.num) ? 'checked' : ''} style="width:auto">` : ''}</td>
+        <td class="num">${t.num}</td><td>${esc(t.nome)}</td><td class="hide-sm muted">${esc(t.cat)}</td>
+        <td><span class="tag ${st.k}">${st.txt}</span></td>
+        <td>${st.r ? `${esc(func(st.r.funcId).nome)}<br><small class="muted">${quando(st.r.inicio)}</small>` : t.obs ? `<small class="muted">${esc(t.obs)}</small>` : ''}</td>
+        <td>${st.r ? (cProbNum === t.num
+              ? `<div class="c-inline"><input id="cobs" placeholder="O que aconteceu?" style="min-width:160px"><button class="danger" data-probgo="${t.num}">OK</button></div>`
+              : `<div class="c-inline"><button class="ok" data-ok="${t.num}">Devolver OK</button><button data-prob="${t.num}">Com Problema</button><button class="ghost" data-extr="${t.num}" title="Marcar como Extraviada">⋯</button></div>`)
+            : t.estado === 'com_problema' ? `<div class="c-inline"><button data-lib="${t.num}">Liberar</button><button data-baixa="${t.num}">Baixar</button></div>` : ''}</td>
+      </tr>`; }).join('') || '<tr><td colspan="7" class="muted">Nada aqui.</td></tr>'}
+      </tbody></table></div>
+    </section></div></div>`;
+  const cq = app.querySelector('#cq');
+  cq.oninput = () => { cQ = cq.value; const p = cq.selectionStart; render(); const n = document.getElementById('cq'); n.focus(); n.setSelectionRange(p, p); };
+  const cfn = app.querySelector('#cfn'); if (cfn) cfn.onchange = () => app.querySelector('#cgo').disabled = !cfn.value;
+  app.onchange = e => { const s = e.target.closest('[data-sel]'); if (s) { s.checked ? cSel.add(s.dataset.sel) : cSel.delete(s.dataset.sel); render(); } };
+  app.onclick = e => {
+    const el = e.target.closest('button'); if (!el) return; const d = el.dataset;
+    if (d.flt) { cFilter = d.flt; cFunc = null; }
+    else if (d.fn) { cFunc = +d.fn; cFilter = 'fora'; }
+    else if (el.id === 'cgo') { retirar(+cfn.value, [...cSel]); cSel.clear(); }
+    else if (el.id === 'cclr') cSel.clear();
+    else if (d.ok) devolver(d.ok, true);
+    else if (d.prob) cProbNum = d.prob;
+    else if (d.probgo) { const o = document.getElementById('cobs').value.trim(); if (!o) return; devolver(d.probgo, false, o); cProbNum = null; }
+    else if (d.extr) { if (confirm(`Marcar ${d.extr} como Extraviada?`)) extraviar(d.extr); }
+    else if (d.lib) liberar(d.lib);
+    else if (d.baixa) baixar(d.baixa);
+    else return;
+    render(); if (cProbNum) document.getElementById('cobs')?.focus();
+  };
+}
+
+// ---------- Switcher do protótipo ----------
+const params = new URLSearchParams(location.search);
+let vi = Math.max(0, VARIANTS.findIndex(v => v.key === (params.get('variant') || 'A').toUpperCase()));
+function render() {
+  const v = VARIANTS[vi];
+  document.getElementById('vlabel').textContent = `${v.key} (${v.name})`;
+  document.getElementById('who').textContent = 'Almoxarife: Sérgio · ' + new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+  const app = document.getElementById('app'); app.onchange = null;
+  ({ A: renderA, B: renderB, C: renderC })[v.key](app);
+}
+function go(d) {
+  vi = (vi + d + VARIANTS.length) % VARIANTS.length;
+  const u = new URL(location.href); u.searchParams.set('variant', VARIANTS[vi].key);
+  try { history.replaceState(null, '', u); } catch {}
+  document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+  render(); window.scrollTo(0, 0);
+}
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+document.getElementById('reset').onclick = () => { seed(); bCart = []; bCurrent = null; cSel.clear(); render(); toast('Dados reiniciados'); };
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+seed(); render();
+</script>
+</body>
+</html>
