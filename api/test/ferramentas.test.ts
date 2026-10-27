@@ -69,6 +69,7 @@ describe('POST /ferramentas', () => {
       observacoes: null,
       temFoto: false,
       situacao: 'no_almoxarifado',
+      responsavel: null,
       criadoEm: '2026-10-27T12:00:00.000Z',
       atualizadoEm: '2026-10-27T12:00:00.000Z',
     });

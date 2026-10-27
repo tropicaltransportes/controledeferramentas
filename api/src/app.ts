@@ -9,7 +9,9 @@ import {
 import { cabecalhosCors } from './cors';
 import type { Env } from './env';
 import { tratarFerramentas } from './ferramentas';
+import { tratarFuncionarios } from './funcionarios';
 import { type Relogio, relogioDoAmbiente } from './relogio';
+import { tratarRetiradas } from './retiradas';
 
 export async function atender(request: Request, env: Env): Promise<Response> {
   const cors = cabecalhosCors(request.headers.get('Origin'));
@@ -37,7 +39,7 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
     return entrar(request, env, relogio);
   }
 
-  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname)) {
+  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname) && !ehRotaFuncionarios(pathname) && pathname !== '/retiradas') {
     return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
   }
 
@@ -48,6 +50,14 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
 
   if (ehRotaFerramentas(pathname)) {
     return tratarFerramentas(request, env, relogio);
+  }
+
+  if (ehRotaFuncionarios(pathname)) {
+    return tratarFuncionarios(request, env);
+  }
+
+  if (pathname === '/retiradas') {
+    return tratarRetiradas(request, env, relogio, usuario);
   }
 
   if (request.method === 'GET' && pathname === '/eu') {
@@ -74,6 +84,10 @@ const ROTAS_PROTEGIDAS = new Set(['/eu', '/sair', '/trocar-senha', '/restrito/ge
 
 function ehRotaFerramentas(pathname: string): boolean {
   return pathname === '/ferramentas' || pathname.startsWith('/ferramentas/');
+}
+
+function ehRotaFuncionarios(pathname: string): boolean {
+  return pathname === '/funcionarios' || pathname.startsWith('/funcionarios/');
 }
 
 async function saude(env: Env, relogio: Relogio): Promise<Response> {

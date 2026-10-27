@@ -4,6 +4,8 @@ import PaginaVazia from './components/PaginaVazia.vue';
 import Entrar from './paginas/Entrar.vue';
 import Ferramentas from './paginas/Ferramentas.vue';
 import FichaFerramenta from './paginas/FichaFerramenta.vue';
+import Funcionarios from './paginas/Funcionarios.vue';
+import PerfilFuncionario from './paginas/PerfilFuncionario.vue';
 import TrocarSenha from './paginas/TrocarSenha.vue';
 import { definirAoPerderSessao, lerToken, sessao, type UsuarioSessao } from './sessao';
 
@@ -41,9 +43,14 @@ export const router = createRouter({
     },
     {
       path: '/funcionarios',
-      component: PaginaVazia,
-      props: { titulo: 'Funcionários' },
+      component: Funcionarios,
       meta: { titulo: 'Funcionários' },
+    },
+    {
+      path: '/funcionarios/:id',
+      component: PerfilFuncionario,
+      props: (rota) => ({ id: Number(rota.params.id) }),
+      meta: { titulo: 'Funcionário' },
     },
     { path: '/:pathMatch(.*)*', redirect: '/painel' },
   ],

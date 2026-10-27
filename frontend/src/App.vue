@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { chamarApi } from './api';
+import ModalRetirada from './components/ModalRetirada.vue';
+import { abrirRetirada, aviso, retirada } from './retirada';
 import { esquecerSessao, rotuloPapel, sessao } from './sessao';
 
 const logo = `${import.meta.env.BASE_URL}logo.png`;
@@ -54,7 +56,7 @@ async function sair() {
           />
         </div>
         <div class="acts">
-          <button type="button" class="primary" aria-label="Retirada">
+          <button v-if="sessao.usuario?.papel === 'almoxarife'" type="button" class="primary" aria-label="Retirada" @click="abrirRetirada()">
             <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></svg>
             <span class="lbl">Retirada</span>
           </button>
@@ -77,6 +79,13 @@ async function sair() {
         <RouterView />
       </main>
     </div>
+
+    <ModalRetirada
+      v-if="retirada.aberta"
+      :funcionario-id="retirada.funcionarioId"
+      :numero="retirada.numero"
+    />
+    <div v-if="aviso" class="toast" role="status">{{ aviso }}</div>
   </div>
 </template>
 
@@ -104,6 +113,21 @@ async function sair() {
   color: var(--brand);
   font-weight: 500;
   white-space: nowrap;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  z-index: 60;
 }
 
 .sair {

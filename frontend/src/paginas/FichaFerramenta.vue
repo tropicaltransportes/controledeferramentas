@@ -5,6 +5,8 @@ import { chamarApi, ErroApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
 import FotoFerramenta from '../components/FotoFerramenta.vue';
 import { type Ferramenta, situacaoDe } from '../ferramentas';
+import { abrirRetirada, versaoRetiradas } from '../retirada';
+import { sessao } from '../sessao';
 
 const props = defineProps<{ numero: string }>();
 
@@ -25,10 +27,17 @@ const editando = ref(false);
 
 const abaAtual = computed(() => ABAS.find((item) => item.valor === aba.value) ?? ABAS[0]);
 
-// Troca de Ficha (pelo histórico do navegador, por exemplo) recarrega os dados e volta para a primeira aba.
+const podeRetirar = computed(() => sessao.usuario?.papel === 'almoxarife');
+
+function dataCurta(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+// Troca de Ficha (pelo histórico do navegador, por exemplo) ou uma Retirada registrada recarrega os dados.
+// Ao trocar de Ficha, volta para a primeira aba.
 watch(
-  () => props.numero,
-  async (numero) => {
+  () => [props.numero, versaoRetiradas.value] as const,
+  async ([numero]) => {
     ficha.value = null;
     naoEncontrada.value = false;
     erro.value = '';
@@ -108,6 +117,19 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
           </span>
         </div>
 
+        <p v-if="ficha.responsavel" class="posse small">
+          Com <b>{{ ficha.responsavel.nome }}</b> desde {{ dataCurta(ficha.responsavel.retiradaEm) }}
+        </p>
+
+        <button
+          v-if="podeRetirar && ficha.situacao === 'no_almoxarifado'"
+          type="button"
+          class="primary retirar"
+          @click="abrirRetirada({ numero: ficha.numero })"
+        >
+          Registrar Retirada
+        </button>
+
         <dl class="specs">
           <template v-for="[rotulo, valor] in itensTecnicos" :key="rotulo">
             <dt>{{ rotulo }}</dt>
@@ -162,6 +184,16 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
 
 .situacao {
   margin: 8px 0 0;
+}
+
+.posse {
+  margin: 10px 0 0;
+}
+
+.retirar {
+  margin-top: 14px;
+  width: 100%;
+  justify-content: center;
 }
 
 .ph-grande {

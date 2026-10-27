@@ -1,5 +1,6 @@
 import type { Env } from './env';
 import type { Relogio } from './relogio';
+import { buscarPosses, type Posse } from './retiradas';
 
 const CATEGORIAS = [
   'Medição',
@@ -15,7 +16,7 @@ const CATEGORIAS = [
 ] as const;
 
 type Estado = 'disponivel' | 'com_problema' | 'baixada' | 'extraviada';
-type Situacao = 'no_almoxarifado' | 'com_problema' | 'baixada' | 'extraviada';
+type Situacao = 'no_almoxarifado' | 'fora' | 'com_problema' | 'baixada' | 'extraviada';
 type Filtro ='todas' | 'no_almoxarifado' | 'fora' | 'atrasada' | 'com_problema' | 'baixadas_extraviadas';
 
 const FILTROS: Filtro[] = [
@@ -74,6 +75,8 @@ interface Ferramenta {
   observacoes: string | null;
   temFoto: boolean;
   situacao: Situacao;
+  /** Quem está com a Ferramenta agora (Retirada aberta), ou null quando não há Retirada aberta. */
+  responsavel: Posse | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -144,7 +147,7 @@ async function listar(params: URLSearchParams, env: Env): Promise<Response> {
   const categoria = params.get('categoria') ?? '';
   const texto = (params.get('texto') ?? '').trim().toLowerCase();
 
-  const linhas = await todasAsLinhas(env);
+  const [linhas, posses] = await Promise.all([todasAsLinhas(env), buscarPosses(env)]);
   const filtradas = linhas.filter((linha) => {
     if (categoria && linha.categoria !== categoria) {
       return false;
@@ -153,12 +156,19 @@ async function listar(params: URLSearchParams, env: Env): Promise<Response> {
     return !texto || buscaCasa(linha, texto);
   });
 
+  const porSituacao = filtradas.map((linha) => ({
+    linha,
+    situacao: situacaoDaFerramenta(linha.estado, posses.get(linha.numero)),
+  }));
+
   const contagens = Object.fromEntries(
-    FILTROS.map((filtro) => [filtro, filtradas.filter((linha) => pertenceAoFiltro(linha.estado, filtro)).length]),
+    FILTROS.map((filtro) => [filtro, porSituacao.filter((item) => pertenceAoFiltro(item.situacao, filtro)).length]),
   );
 
   return Response.json({
-    itens: filtradas.filter((linha) => pertenceAoFiltro(linha.estado, situacao)).map(paraFerramenta),
+    itens: porSituacao
+      .filter((item) => pertenceAoFiltro(item.situacao, situacao))
+      .map((item) => paraFerramenta(item.linha, posses.get(item.linha.numero))),
     contagens,
   });
 }
@@ -176,7 +186,7 @@ async function obter(numero: string, env: Env): Promise<Response> {
     return naoEncontrada();
   }
 
-  return Response.json(paraFerramenta(linha));
+  return Response.json(paraFerramenta(linha, (await buscarPosses(env, numero)).get(numero)));
 }
 
 async function cadastrar(request: Request, env: Env, relogio: Relogio): Promise<Response> {
@@ -261,7 +271,7 @@ async function editar(numero: string, request: Request, env: Env, relogio: Relog
     )
     .run();
 
-  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta));
+  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta, await posseDe(numero, env)));
 }
 
 /** Troca a foto da Ferramenta. O corpo é a própria imagem; o Content-Type dela é guardado junto. */
@@ -289,7 +299,7 @@ async function enviarFoto(numero: string, request: Request, env: Env, relogio: R
     .bind(new Uint8Array(bytes), tipo, relogio().toISOString(), numero)
     .run();
 
-  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta));
+  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta, await posseDe(numero, env)));
 }
 
 async function lerFoto(numero: string, env: Env): Promise<Response> {
@@ -366,21 +376,35 @@ function textoDe(valor: unknown): string | null {
   return valor.trim() || null;
 }
 
-function pertenceAoFiltro(estado: Estado, filtro: Filtro): boolean {
+/** Fora vale quando a Ferramenta está disponível e com uma Retirada aberta. */
+function situacaoDaFerramenta(estado: Estado, posse: Posse | undefined): Situacao {
+  if (estado === 'disponivel' && posse) {
+    return 'fora';
+  }
+
+  return SITUACAO_DO_ESTADO[estado];
+}
+
+function pertenceAoFiltro(situacao: Situacao, filtro: Filtro): boolean {
   switch (filtro) {
     case 'todas':
-      return estado === 'disponivel' || estado === 'com_problema';
+      return situacao !== 'baixada' && situacao !== 'extraviada';
     case 'no_almoxarifado':
-      return estado === 'disponivel';
-    case 'com_problema':
-      return estado === 'com_problema';
-    case 'baixadas_extraviadas':
-      return estado === 'baixada' || estado === 'extraviada';
-    // Fora e Atrasada dependem de Retiradas, que entram na próxima fatia.
+      return situacao === 'no_almoxarifado';
     case 'fora':
+      return situacao === 'fora';
+    case 'com_problema':
+      return situacao === 'com_problema';
+    case 'baixadas_extraviadas':
+      return situacao === 'baixada' || situacao === 'extraviada';
+    // Atrasada depende da regra de Expediente, que entra na próxima fatia.
     case 'atrasada':
       return false;
   }
+}
+
+async function posseDe(numero: string, env: Env): Promise<Posse | undefined> {
+  return (await buscarPosses(env, numero)).get(numero);
 }
 
 function buscaCasa(linha: LinhaFerramenta, texto: string): boolean {
@@ -421,7 +445,7 @@ async function buscarLinha(numero: string, env: Env): Promise<LinhaFerramenta | 
     .first<LinhaFerramenta>();
 }
 
-function paraFerramenta(linha: LinhaFerramenta): Ferramenta {
+function paraFerramenta(linha: LinhaFerramenta, posse?: Posse): Ferramenta {
   // Situação exibida: derivada aqui, na API. A tela só mostra o que vem daqui.
   return {
     numero: linha.numero,
@@ -434,7 +458,8 @@ function paraFerramenta(linha: LinhaFerramenta): Ferramenta {
     aquisicao: linha.aquisicao,
     observacoes: linha.observacoes,
     temFoto: linha.foto_tipo !== null,
-    situacao: SITUACAO_DO_ESTADO[linha.estado],
+    situacao: situacaoDaFerramenta(linha.estado, posse),
+    responsavel: posse ?? null,
     criadoEm: linha.criado_em,
     atualizadoEm: linha.atualizado_em,
   };

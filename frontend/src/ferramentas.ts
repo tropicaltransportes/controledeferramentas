@@ -53,6 +53,8 @@ export interface Ferramenta {
   observacoes: string | null;
   temFoto: boolean;
   situacao: Situacao;
+  /** Quem está com a Ferramenta agora (Retirada aberta), ou null quando ela não está fora. */
+  responsavel: { id: number; nome: string; retiradaEm: string } | null;
   criadoEm: string;
   atualizadoEm: string;
 }

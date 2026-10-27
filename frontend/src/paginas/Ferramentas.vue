@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router';
 import { chamarApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
 import FotoFerramenta from '../components/FotoFerramenta.vue';
+import { versaoRetiradas } from '../retirada';
 import {
   carregarCategorias,
   FILTROS,
@@ -59,7 +60,7 @@ async function carregar() {
   }
 }
 
-watch([situacao, categoria], carregar, { immediate: true });
+watch([situacao, categoria, versaoRetiradas], carregar, { immediate: true });
 
 // Digitar na busca não dispara uma requisição por tecla: espera a pausa de 300 ms.
 let esperaBusca: ReturnType<typeof setTimeout> | undefined;
