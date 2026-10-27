@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "controle-ferramentas-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "controle-ferramentas",
+      // Preencher com o ID do D1 criado na Cloudflare (ver README, seção Infraestrutura).
+      "database_id": "PREENCHER-COM-ID-DO-D1",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
