@@ -8,4 +8,5 @@ O Controle de Ferramentas é um sistema totalmente separado do ERP Oficina — n
 - Frontend e API ficam em domínios diferentes (`*.github.io` e `*.workers.dev`), então a sessão usa token no cabeçalho `Authorization` em vez de cookie, e a API libera CORS só para a origem do Pages.
 - Este repositório é público (exigência do GitHub Pages gratuito): nenhum segredo, dado ou backup entra nele. O backup semanal do D1 vai para um repositório **privado** separado.
 - D1 é SQLite: regras de integridade (uma Retirada aberta por Ferramenta, por exemplo) ficam em constraints e na API.
+- A API é publicada pela integração Git da Cloudflare (Workers Builds), ligada ao `main` deste repositório: a Cloudflare clona, aplica as migrações do D1 e faz o deploy com um token que ela mesma gerencia. Não há token da Cloudflare neste repositório nem deploy da API pelo GitHub Actions — o Actions só publica o frontend no Pages.
 - Se a cota gratuita estourar, a Cloudflare passa a responder com erro em vez de cobrar — o sistema para, não gera conta surpresa.
