@@ -13,7 +13,7 @@ export class ErroApi extends Error {
 }
 
 interface OpcoesChamada {
-  metodo?: 'GET' | 'POST';
+  metodo?: 'GET' | 'POST' | 'PUT';
   corpo?: unknown;
   /** Chamadas de login não mandam token e não derrubam sessão quando a senha está errada. */
   autenticado?: boolean;

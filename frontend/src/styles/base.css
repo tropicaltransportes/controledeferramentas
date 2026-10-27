@@ -292,3 +292,375 @@ input:focus {
     padding: 16px 14px 90px;
   }
 }
+
+/* Cores de situação e de apoio, no tom da paleta oficial */
+:root {
+  --green: var(--verde-escuro);
+  --green-soft: var(--brand-soft);
+  --blue: #2457c5;
+  --blue-soft: #e8efff;
+  --red: #c62828;
+  --red-soft: #fdecec;
+  --amber: #a15c07;
+  --amber-soft: #fff4e0;
+  --gray-soft: #f1f3f6;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.num {
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.b-disp {
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.b-fora {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.b-atr {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.b-prob {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.b-off {
+  background: var(--gray-soft);
+  color: var(--muted);
+}
+
+.err {
+  color: var(--red);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
+.empty {
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.card-b {
+  padding: 20px;
+}
+
+button.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+button.x {
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 8px;
+  color: var(--muted);
+}
+
+select,
+textarea {
+  font: inherit;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* Catálogo de Ferramentas: filtros em pílulas, cartões e lista */
+.pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  border-radius: 99px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.pill b {
+  font-weight: 700;
+  margin-left: 2px;
+  color: var(--muted);
+}
+
+.pill.on {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.pill.on b {
+  color: #fff;
+  opacity: 0.7;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.toolbar .right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.toolbar select {
+  width: auto;
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.seg button {
+  border: 0;
+  border-radius: 0;
+  padding: 7px 10px;
+}
+
+.seg button.on {
+  background: var(--gray-soft);
+  color: var(--brand);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.tcard {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: 0.15s;
+  display: flex;
+  flex-direction: column;
+}
+
+.tcard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.1);
+}
+
+.tcard.atr {
+  border-color: #f5b5b5;
+}
+
+.tcard .ph {
+  height: 130px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  background: var(--brand-soft);
+}
+
+.tcard .ph .badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.tcard .bd {
+  padding: 12px 14px 14px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Ficha da Ferramenta: ficha técnica à esquerda, abas à direita */
+.detail {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.specs {
+  margin: 14px 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 12px;
+  font-size: 13px;
+}
+
+.specs dt {
+  color: var(--muted);
+}
+
+.specs dd {
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 12px;
+  overflow-x: auto;
+}
+
+.tab {
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 14px 12px;
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+
+.tab.on {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+
+/* Formulário da Ferramenta, em modal */
+.modal-bg {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 5vh 16px;
+  z-index: 40;
+  overflow: auto;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal .mh {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal .mh .ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.modal .mh h2 {
+  font-size: 17px;
+}
+
+.modal .mh .x {
+  margin-left: auto;
+}
+
+.modal .mb {
+  padding: 18px 22px;
+}
+
+.modal .mf {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+  background: #fafbfc;
+  border-radius: 0 0 16px 16px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.form .full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .detail,
+  .form {
+    grid-template-columns: 1fr;
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .tcard .ph {
+    height: 100px;
+  }
+}

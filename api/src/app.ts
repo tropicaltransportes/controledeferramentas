@@ -8,6 +8,7 @@ import {
 } from './autenticacao';
 import { cabecalhosCors } from './cors';
 import type { Env } from './env';
+import { tratarFerramentas } from './ferramentas';
 import { type Relogio, relogioDoAmbiente } from './relogio';
 
 export async function atender(request: Request, env: Env): Promise<Response> {
@@ -36,13 +37,17 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
     return entrar(request, env, relogio);
   }
 
-  if (!ROTAS_PROTEGIDAS.has(pathname)) {
+  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname)) {
     return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
   }
 
   const usuario = await usuarioDaRequisicao(request, env, relogio);
   if (!usuario) {
     return naoAutenticado();
+  }
+
+  if (ehRotaFerramentas(pathname)) {
+    return tratarFerramentas(request, env, relogio);
   }
 
   if (request.method === 'GET' && pathname === '/eu') {
@@ -66,6 +71,10 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
 }
 
 const ROTAS_PROTEGIDAS = new Set(['/eu', '/sair', '/trocar-senha', '/restrito/gestor']);
+
+function ehRotaFerramentas(pathname: string): boolean {
+  return pathname === '/ferramentas' || pathname.startsWith('/ferramentas/');
+}
 
 async function saude(env: Env, relogio: Relogio): Promise<Response> {
   const agora = relogio().toISOString();

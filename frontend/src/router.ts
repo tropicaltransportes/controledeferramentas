@@ -2,6 +2,8 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import { chamarApi } from './api';
 import PaginaVazia from './components/PaginaVazia.vue';
 import Entrar from './paginas/Entrar.vue';
+import Ferramentas from './paginas/Ferramentas.vue';
+import FichaFerramenta from './paginas/FichaFerramenta.vue';
 import TrocarSenha from './paginas/TrocarSenha.vue';
 import { definirAoPerderSessao, lerToken, sessao, type UsuarioSessao } from './sessao';
 
@@ -28,9 +30,14 @@ export const router = createRouter({
     },
     {
       path: '/ferramentas',
-      component: PaginaVazia,
-      props: { titulo: 'Ferramentas' },
+      component: Ferramentas,
       meta: { titulo: 'Ferramentas' },
+    },
+    {
+      path: '/ferramentas/:numero',
+      component: FichaFerramenta,
+      props: true,
+      meta: { titulo: 'Ferramenta' },
     },
     {
       path: '/funcionarios',
