@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { chamarApi, ErroApi } from '../api';
-import { camposDe, CATEGORIAS, type CamposFerramenta, type Ferramenta } from '../ferramentas';
+import { camposDe, carregarCategorias, type CamposFerramenta, type Ferramenta } from '../ferramentas';
 
 // Sem `ferramenta` o formulário cadastra e sugere o próximo Número; com ela, edita a Ficha (o Número fica travado).
 const props = defineProps<{ ferramenta?: Ferramenta }>();
@@ -28,16 +28,16 @@ const campos = reactive<CamposFerramenta>(
 );
 const erro = ref('');
 const enviando = ref(false);
+const categorias = ref<string[]>([]);
 
 onMounted(async () => {
-  if (edicao) {
-    return;
-  }
-
   try {
-    campos.numero = (await chamarApi<{ numero: string }>('/ferramentas/proximo-numero')).numero;
+    categorias.value = await carregarCategorias();
+    if (!edicao) {
+      campos.numero = (await chamarApi<{ numero: string }>('/ferramentas/proximo-numero')).numero;
+    }
   } catch {
-    erro.value = 'Não foi possível sugerir um Número. Digite o Número da Ferramenta.';
+    erro.value = 'Não foi possível carregar o formulário. Tente de novo.';
   }
 });
 
@@ -81,7 +81,7 @@ async function salvar() {
         <label>
           <span>Categoria</span>
           <select v-model="campos.categoria" required>
-            <option v-for="categoria in CATEGORIAS" :key="categoria" :value="categoria">{{ categoria }}</option>
+            <option v-for="categoria in categorias" :key="categoria" :value="categoria">{{ categoria }}</option>
           </select>
         </label>
 

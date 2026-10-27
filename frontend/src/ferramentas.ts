@@ -1,17 +1,19 @@
-// Vocabulário e formato das Ferramentas. A situação chega pronta da API; aqui só fica o rótulo de exibição.
+// Vocabulário e formato das Ferramentas. A situação e as categorias chegam da API; aqui só fica o rótulo de exibição.
+import { chamarApi } from './api';
 
-export const CATEGORIAS = [
-  'Medição',
-  'Diagnóstico',
-  'Elétrica',
-  'Elevação',
-  'Mecânica',
-  'Pneumática',
-  'Suspensão',
-  'Freios',
-  'Motor',
-  'Geral',
-] as const;
+let categorias: Promise<string[]> | null = null;
+
+/** Categorias aceitas pela API, buscadas uma vez por sessão de página. */
+export function carregarCategorias(): Promise<string[]> {
+  categorias ??= chamarApi<{ categorias: string[] }>('/ferramentas/categorias')
+    .then((resposta) => resposta.categorias)
+    .catch((falha: unknown) => {
+      categorias = null;
+      throw falha;
+    });
+
+  return categorias;
+}
 
 export type Situacao = 'no_almoxarifado' | 'fora' | 'atrasada' | 'com_problema' | 'baixada' | 'extraviada';
 

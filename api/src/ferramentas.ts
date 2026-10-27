@@ -90,6 +90,10 @@ export async function tratarFerramentas(request: Request, env: Env, relogio: Rel
     return listar(url.searchParams, env);
   }
 
+  if (request.method === 'GET' && pathname === '/ferramentas/categorias') {
+    return Response.json({ categorias: CATEGORIAS });
+  }
+
   if (request.method === 'GET' && pathname === '/ferramentas/proximo-numero') {
     return proximoNumero(env);
   }
@@ -208,11 +212,12 @@ async function cadastrar(request: Request, env: Env, relogio: Relogio): Promise<
 }
 
 async function editar(numero: string, request: Request, env: Env, relogio: Relogio): Promise<Response> {
-  if (!(await buscarLinha(numero, env))) {
+  const atual = await buscarLinha(numero, env);
+  if (!atual) {
     return naoEncontrada();
   }
 
-  const dados = lerDados(await lerCorpo(request));
+  const dados = lerDados(await lerCorpo(request), paraDados(atual));
   if ('erro' in dados) {
     return erroDeValidacao(dados.erro);
   }
@@ -241,14 +246,20 @@ async function editar(numero: string, request: Request, env: Env, relogio: Relog
   return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta));
 }
 
-/** Dados da Ficha vindos do corpo da requisição, ou a mensagem do primeiro campo inválido. */
-function lerDados(corpo: Record<string, unknown> | null): DadosFerramenta | { erro: string } {
-  const nome = textoDe(corpo?.nome) ?? '';
+/**
+ * Dados da Ficha vindos do corpo, ou a mensagem do primeiro campo inválido.
+ * Campo ausente do corpo mantém o valor atual (`atuais`); campo presente vazio vira null.
+ */
+function lerDados(
+  corpo: Record<string, unknown> | null,
+  atuais?: DadosFerramenta,
+): DadosFerramenta | { erro: string } {
+  const nome = campo(corpo, 'nome', atuais?.nome) ?? '';
   if (!nome) {
     return { erro: 'Informe o nome da Ferramenta' };
   }
 
-  const categoria = textoDe(corpo?.categoria) ?? '';
+  const categoria = campo(corpo, 'categoria', atuais?.categoria) ?? '';
   if (!(CATEGORIAS as readonly string[]).includes(categoria)) {
     return { erro: 'Escolha uma categoria da lista' };
   }
@@ -256,12 +267,33 @@ function lerDados(corpo: Record<string, unknown> | null): DadosFerramenta | { er
   return {
     nome,
     categoria,
-    marca: textoDe(corpo?.marca),
-    modelo: textoDe(corpo?.modelo),
-    especificacao: textoDe(corpo?.especificacao),
-    numeroSerie: textoDe(corpo?.numeroSerie),
-    aquisicao: textoDe(corpo?.aquisicao),
-    observacoes: textoDe(corpo?.observacoes),
+    marca: campo(corpo, 'marca', atuais?.marca),
+    modelo: campo(corpo, 'modelo', atuais?.modelo),
+    especificacao: campo(corpo, 'especificacao', atuais?.especificacao),
+    numeroSerie: campo(corpo, 'numeroSerie', atuais?.numeroSerie),
+    aquisicao: campo(corpo, 'aquisicao', atuais?.aquisicao),
+    observacoes: campo(corpo, 'observacoes', atuais?.observacoes),
+  };
+}
+
+function campo(corpo: Record<string, unknown> | null, chave: string, atual: string | null | undefined): string | null {
+  if (!corpo || corpo[chave] === undefined) {
+    return atual ?? null;
+  }
+
+  return textoDe(corpo[chave]);
+}
+
+function paraDados(linha: LinhaFerramenta): DadosFerramenta {
+  return {
+    nome: linha.nome,
+    categoria: linha.categoria,
+    marca: linha.marca,
+    modelo: linha.modelo,
+    especificacao: linha.especificacao,
+    numeroSerie: linha.numero_serie,
+    aquisicao: linha.aquisicao,
+    observacoes: linha.observacoes,
   };
 }
 

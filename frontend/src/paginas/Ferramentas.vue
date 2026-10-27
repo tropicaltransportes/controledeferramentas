@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { chamarApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
 import {
-  CATEGORIAS,
+  carregarCategorias,
   FILTROS,
   type Filtro,
   type Ferramenta,
@@ -22,6 +22,13 @@ const dados = ref<ListaFerramentas | null>(null);
 const carregando = ref(false);
 const erro = ref('');
 const formAberto = ref(false);
+const categorias = ref<string[]>([]);
+
+carregarCategorias()
+  .then((lista) => {
+    categorias.value = lista;
+  })
+  .catch(() => undefined);
 
 // Só a resposta da última busca vale: digitar depressa não deixa um resultado antigo sobrescrever o novo.
 let ultimaBusca = 0;
@@ -51,7 +58,15 @@ async function carregar() {
   }
 }
 
-watch([situacao, categoria, texto], carregar, { immediate: true });
+watch([situacao, categoria], carregar, { immediate: true });
+
+// Digitar na busca não dispara uma requisição por tecla: espera a pausa de 300 ms.
+let esperaBusca: ReturnType<typeof setTimeout> | undefined;
+watch(texto, () => {
+  clearTimeout(esperaBusca);
+  esperaBusca = setTimeout(carregar, 300);
+});
+onBeforeUnmount(() => clearTimeout(esperaBusca));
 
 function aoSalvar(ferramenta: Ferramenta) {
   formAberto.value = false;
@@ -88,7 +103,7 @@ function aoSalvar(ferramenta: Ferramenta) {
     <div class="right">
       <select v-model="categoria" aria-label="Categoria">
         <option value="">Todas as categorias</option>
-        <option v-for="item in CATEGORIAS" :key="item" :value="item">{{ item }}</option>
+        <option v-for="item in categorias" :key="item" :value="item">{{ item }}</option>
       </select>
 
       <div class="seg" role="group" aria-label="Modo de exibição">

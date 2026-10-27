@@ -1,5 +1,6 @@
 import { SELF, env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { atender } from '../src/app';
 import { gerarHashSenha } from '../src/senha';
 
 const SENHA = 'senha-forte-123';
@@ -72,6 +73,37 @@ describe('POST /ferramentas', () => {
     });
   });
 
+  it('normaliza o Número digitado em minúsculas', async () => {
+    const resposta = await comToken(token, 'POST', '/ferramentas', cadastro('f-050'));
+
+    expect(await resposta.json()).toMatchObject({ numero: 'F-050' });
+  });
+
+  it('responde 422 quando outra gravação pega o mesmo Número depois da checagem', async () => {
+    // Simula a corrida: a checagem não acha nada, mas o INSERT encontra a chave já usada.
+    const bancoDaCorrida = {
+      prepare: (sql: string) =>
+        sql.startsWith('INSERT INTO ferramentas')
+          ? {
+              bind: () => ({
+                run: () => Promise.reject(new Error('D1_ERROR: UNIQUE constraint failed: ferramentas.numero')),
+              }),
+            }
+          : env.DB.prepare(sql),
+    } as unknown as D1Database;
+
+    const resposta = await atender(
+      new Request('https://api.test/ferramentas', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(cadastro('F-060')),
+      }),
+      { ...env, DB: bancoDaCorrida },
+    );
+
+    expect(resposta.status).toBe(422);
+  });
+
   it('recusa um Número já cadastrado com 422', async () => {
     await comToken(token, 'POST', '/ferramentas', cadastro('F-001'));
 
@@ -102,6 +134,16 @@ describe('POST /ferramentas', () => {
     });
 
     expect(resposta.status).toBe(401);
+  });
+});
+
+describe('GET /ferramentas/categorias', () => {
+  it('lista as categorias aceitas no cadastro, para o formulário usar a mesma lista', async () => {
+    const resposta = await comToken(token, 'GET', '/ferramentas/categorias');
+
+    expect(await resposta.json()).toEqual({
+      categorias: expect.arrayContaining(['Medição', 'Elétrica', 'Mecânica', 'Geral']),
+    });
   });
 });
 
@@ -164,6 +206,27 @@ describe('PUT /ferramentas/:numero', () => {
       marca: 'Makita',
     });
     expect((await comToken(token, 'GET', '/ferramentas/F-999')).status).toBe(404);
+  });
+
+  it('mantém os campos que não vieram no corpo', async () => {
+    await comToken(token, 'POST', '/ferramentas', cadastro('F-013', { marca: 'Gedore', modelo: 'GR-12' }));
+
+    const resposta = await comToken(token, 'PUT', '/ferramentas/F-013', { nome: 'Chave nova' });
+
+    expect(await resposta.json()).toMatchObject({
+      nome: 'Chave nova',
+      categoria: 'Mecânica',
+      marca: 'Gedore',
+      modelo: 'GR-12',
+    });
+  });
+
+  it('limpa um campo quando o corpo manda string vazia', async () => {
+    await comToken(token, 'POST', '/ferramentas', cadastro('F-014', { marca: 'Gedore' }));
+
+    const resposta = await comToken(token, 'PUT', '/ferramentas/F-014', { marca: '' });
+
+    expect(await resposta.json()).toMatchObject({ marca: null, nome: 'Ferramenta F-014' });
   });
 
   it('recusa apagar o nome com 422 e responde 404 para Número inexistente', async () => {
