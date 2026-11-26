@@ -1,11 +1,58 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router';
+import { ref } from 'vue';
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
+import { chamarApi } from './api';
+import ModalDevolucao from './components/ModalDevolucao.vue';
+import ModalRetirada from './components/ModalRetirada.vue';
+import { abrirDevolucao, devolucao } from './devolucao';
+import { abrirRetirada, aviso, mostrarAviso, retirada } from './retirada';
+import { esquecerSessao, rotuloPapel, sessao } from './sessao';
+
+// Mesmo formato de GET /busca: a API decide o destino, a tela só navega.
+type DestinoBusca =
+  | { destino: 'ferramenta'; numero: string }
+  | { destino: 'funcionario'; id: number }
+  | { destino: 'catalogo'; texto: string };
 
 const logo = `${import.meta.env.BASE_URL}logo.png`;
+const route = useRoute();
+const router = useRouter();
+const busca = ref('');
+
+async function buscar() {
+  const termo = busca.value.trim();
+  if (!termo) {
+    return;
+  }
+
+  try {
+    const destino = await chamarApi<DestinoBusca>(`/busca?texto=${encodeURIComponent(termo)}`);
+    busca.value = '';
+
+    if (destino.destino === 'ferramenta') {
+      await router.push({ path: `/ferramentas/${encodeURIComponent(destino.numero)}` });
+    } else if (destino.destino === 'funcionario') {
+      await router.push({ path: `/funcionarios/${destino.id}` });
+    } else {
+      await router.push({ path: '/ferramentas', query: { texto: destino.texto } });
+    }
+  } catch {
+    mostrarAviso('Não foi possível buscar. Tente de novo.');
+  }
+}
+
+async function sair() {
+  // Mesmo que a API não responda, o usuário sai daqui: a sessão local some de qualquer jeito.
+  await chamarApi<void>('/sair', { metodo: 'POST' }).catch(() => undefined);
+  esquecerSessao();
+  await router.push({ path: '/entrar' });
+}
 </script>
 
 <template>
-  <div class="shell">
+  <RouterView v-if="route.meta.semCasca" />
+
+  <div v-else class="shell">
     <aside class="side">
       <div class="logo">
         <img :src="logo" alt="Tropical Transportes" />
@@ -32,23 +79,38 @@ const logo = `${import.meta.env.BASE_URL}logo.png`;
 
     <div class="main">
       <header class="top">
-        <div class="search">
+        <form class="search" role="search" @submit.prevent="buscar">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
           <input
+            v-model="busca"
             type="search"
             aria-label="Buscar ferramenta ou funcionário"
             placeholder="Buscar ferramenta ou funcionário…"
           />
-        </div>
+        </form>
         <div class="acts">
-          <button type="button" class="primary" aria-label="Retirada">
+          <button v-if="sessao.usuario?.papel === 'almoxarife'" type="button" class="primary" aria-label="Retirada" @click="abrirRetirada()">
             <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></svg>
             <span class="lbl">Retirada</span>
           </button>
-          <button type="button" class="outline" aria-label="Devolução">
+          <button
+            v-if="sessao.usuario?.papel === 'almoxarife'"
+            type="button"
+            class="outline"
+            aria-label="Devolução"
+            @click="abrirDevolucao()"
+          >
             <svg viewBox="0 0 24 24"><path d="M17 7 7 17M16 17H7V8" /></svg>
             <span class="lbl">Devolução</span>
           </button>
+        </div>
+        <div v-if="sessao.usuario" class="conta">
+          <div class="quem">
+            <strong>{{ sessao.usuario.nome }}</strong>
+            <span>{{ rotuloPapel(sessao.usuario.papel) }}</span>
+          </div>
+          <RouterLink to="/conta/senha" class="link">Trocar senha</RouterLink>
+          <button type="button" class="sair" @click="sair">Sair</button>
         </div>
       </header>
 
@@ -56,5 +118,70 @@ const logo = `${import.meta.env.BASE_URL}logo.png`;
         <RouterView />
       </main>
     </div>
+
+    <ModalRetirada
+      v-if="retirada.aberta"
+      :funcionario-id="retirada.funcionarioId"
+      :numero="retirada.numero"
+    />
+    <ModalDevolucao v-if="devolucao.aberta" :numero="devolucao.numero" />
+    <div v-if="aviso" class="toast" role="status">{{ aviso }}</div>
   </div>
 </template>
+
+<style scoped>
+.conta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+
+.quem {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.quem span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.link {
+  color: var(--brand);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  z-index: 60;
+}
+
+.sair {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .quem span {
+    display: none;
+  }
+
+  .conta {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+</style>

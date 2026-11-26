@@ -1,5 +1,13 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import PaginaVazia from './components/PaginaVazia.vue';
+import { chamarApi } from './api';
+import Entrar from './paginas/Entrar.vue';
+import Ferramentas from './paginas/Ferramentas.vue';
+import FichaFerramenta from './paginas/FichaFerramenta.vue';
+import Funcionarios from './paginas/Funcionarios.vue';
+import Painel from './paginas/Painel.vue';
+import PerfilFuncionario from './paginas/PerfilFuncionario.vue';
+import TrocarSenha from './paginas/TrocarSenha.vue';
+import { definirAoPerderSessao, lerToken, sessao, type UsuarioSessao } from './sessao';
 
 // Hash na URL: o GitHub Pages não precisa de regra de reescrita, então recarregar não dá 404.
 export const router = createRouter({
@@ -7,25 +15,71 @@ export const router = createRouter({
   routes: [
     { path: '/', redirect: '/painel' },
     {
+      path: '/entrar',
+      component: Entrar,
+      meta: { titulo: 'Entrar', publica: true, semCasca: true },
+    },
+    {
+      path: '/conta/senha',
+      component: TrocarSenha,
+      meta: { titulo: 'Trocar senha' },
+    },
+    {
       path: '/painel',
-      component: PaginaVazia,
-      props: { titulo: 'Painel' },
+      component: Painel,
       meta: { titulo: 'Painel' },
     },
     {
       path: '/ferramentas',
-      component: PaginaVazia,
-      props: { titulo: 'Ferramentas' },
+      component: Ferramentas,
       meta: { titulo: 'Ferramentas' },
     },
     {
+      path: '/ferramentas/:numero',
+      component: FichaFerramenta,
+      props: true,
+      meta: { titulo: 'Ferramenta' },
+    },
+    {
       path: '/funcionarios',
-      component: PaginaVazia,
-      props: { titulo: 'Funcionários' },
+      component: Funcionarios,
       meta: { titulo: 'Funcionários' },
+    },
+    {
+      path: '/funcionarios/:id',
+      component: PerfilFuncionario,
+      props: (rota) => ({ id: Number(rota.params.id) }),
+      meta: { titulo: 'Funcionário' },
     },
     { path: '/:pathMatch(.*)*', redirect: '/painel' },
   ],
+});
+
+definirAoPerderSessao(() => {
+  void router.push({ path: '/entrar', query: { para: router.currentRoute.value.fullPath } });
+});
+
+// Guarda de rotas: sem sessão válida, só a tela de login é acessível.
+router.beforeEach(async (para) => {
+  const publica = Boolean(para.meta.publica);
+
+  if (!sessao.usuario && lerToken()) {
+    try {
+      sessao.usuario = (await chamarApi<{ usuario: UsuarioSessao }>('/eu')).usuario;
+    } catch {
+      // Token recusado: chamarApi já esqueceu a sessão; a checagem abaixo manda para o login.
+    }
+  }
+
+  if (!sessao.usuario && !publica) {
+    return { path: '/entrar', query: { para: para.fullPath } };
+  }
+
+  if (sessao.usuario && para.path === '/entrar') {
+    return '/painel';
+  }
+
+  return true;
 });
 
 router.afterEach((to) => {

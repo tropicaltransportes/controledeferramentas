@@ -14,9 +14,9 @@ describe('relogioDoAmbiente', () => {
   it('ignora o horário fixado fora do ambiente de teste (usa a hora real)', () => {
     const antes = Date.now();
     const relogio = relogioDoAmbiente({ RELOGIO_TESTE: HORA_FIXA } as Env);
+    const agora = relogio().getTime();
     const depois = Date.now();
 
-    const agora = relogio().getTime();
     expect(agora).toBeGreaterThanOrEqual(antes);
     expect(agora).toBeLessThanOrEqual(depois);
   });
