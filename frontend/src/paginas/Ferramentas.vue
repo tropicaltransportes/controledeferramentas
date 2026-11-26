@@ -24,7 +24,9 @@ const podeDevolver = computed(() => sessao.usuario?.papel === 'almoxarife');
 const filtroDaUrl = FILTROS.find((filtro) => filtro.valor === rota.query.situacao)?.valor ?? 'todas';
 const situacao = ref<Filtro>(filtroDaUrl);
 const categoria = ref('');
-const texto = ref('');
+// A busca geral do topo abre o catálogo com o texto já preenchido: /ferramentas?texto=...
+const textoDaUrl = typeof rota.query.texto === 'string' ? rota.query.texto : '';
+const texto = ref(textoDaUrl);
 const modo = ref<'cartoes' | 'lista'>('cartoes');
 const dados = ref<ListaFerramentas | null>(null);
 const carregando = ref(false);
@@ -75,6 +77,14 @@ watch(texto, () => {
   esperaBusca = setTimeout(carregar, 300);
 });
 onBeforeUnmount(() => clearTimeout(esperaBusca));
+
+// Com o catálogo já aberto, uma nova busca do topo troca o texto sem recarregar a página.
+watch(
+  () => rota.query.texto,
+  (novo) => {
+    texto.value = typeof novo === 'string' ? novo : '';
+  },
+);
 
 function aoSalvar(ferramenta: Ferramenta) {
   formAberto.value = false;

@@ -1,15 +1,45 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { chamarApi } from './api';
 import ModalDevolucao from './components/ModalDevolucao.vue';
 import ModalRetirada from './components/ModalRetirada.vue';
 import { abrirDevolucao, devolucao } from './devolucao';
-import { abrirRetirada, aviso, retirada } from './retirada';
+import { abrirRetirada, aviso, mostrarAviso, retirada } from './retirada';
 import { esquecerSessao, rotuloPapel, sessao } from './sessao';
+
+// Mesmo formato de GET /busca: a API decide o destino, a tela só navega.
+type DestinoBusca =
+  | { destino: 'ferramenta'; numero: string }
+  | { destino: 'funcionario'; id: number }
+  | { destino: 'catalogo'; texto: string };
 
 const logo = `${import.meta.env.BASE_URL}logo.png`;
 const route = useRoute();
 const router = useRouter();
+const busca = ref('');
+
+async function buscar() {
+  const termo = busca.value.trim();
+  if (!termo) {
+    return;
+  }
+
+  try {
+    const destino = await chamarApi<DestinoBusca>(`/busca?texto=${encodeURIComponent(termo)}`);
+    busca.value = '';
+
+    if (destino.destino === 'ferramenta') {
+      await router.push({ path: `/ferramentas/${encodeURIComponent(destino.numero)}` });
+    } else if (destino.destino === 'funcionario') {
+      await router.push({ path: `/funcionarios/${destino.id}` });
+    } else {
+      await router.push({ path: '/ferramentas', query: { texto: destino.texto } });
+    }
+  } catch {
+    mostrarAviso('Não foi possível buscar. Tente de novo.');
+  }
+}
 
 async function sair() {
   // Mesmo que a API não responda, o usuário sai daqui: a sessão local some de qualquer jeito.
@@ -49,14 +79,15 @@ async function sair() {
 
     <div class="main">
       <header class="top">
-        <div class="search">
+        <form class="search" role="search" @submit.prevent="buscar">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
           <input
+            v-model="busca"
             type="search"
             aria-label="Buscar ferramenta ou funcionário"
             placeholder="Buscar ferramenta ou funcionário…"
           />
-        </div>
+        </form>
         <div class="acts">
           <button v-if="sessao.usuario?.papel === 'almoxarife'" type="button" class="primary" aria-label="Retirada" @click="abrirRetirada()">
             <svg viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9" /></svg>
