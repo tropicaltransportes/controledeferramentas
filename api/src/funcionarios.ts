@@ -50,8 +50,11 @@ export async function tratarFuncionarios(request: Request, env: Env): Promise<Re
 async function listar(params: URLSearchParams, env: Env): Promise<Response> {
   const texto = (params.get('texto') ?? '').trim().toLowerCase();
 
-  const { results } = await env.DB.prepare('SELECT id, nome, funcao, ativo FROM funcionarios ORDER BY nome').all<LinhaFuncionario>();
-  const filtrados = results.filter((linha) => !texto || linha.nome.toLowerCase().includes(texto));
+  const { results } = await env.DB.prepare('SELECT id, nome, funcao, ativo FROM funcionarios').all<LinhaFuncionario>();
+  // Ordenado em JS: o SQLite compara bytes, e assim "Ângela" iria para depois de "Zé".
+  const filtrados = results
+    .filter((linha) => !texto || linha.nome.toLowerCase().includes(texto))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
   const abertas = await contarAbertasPorFuncionario(env);
 

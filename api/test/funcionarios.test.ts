@@ -111,6 +111,16 @@ describe('GET /funcionarios', () => {
     ]);
   });
 
+  it('ordena por nome como em português, sem jogar acentuados para o fim', async () => {
+    await comToken(token, 'POST', '/funcionarios', { nome: 'Ângela Costa' });
+    await comToken(token, 'POST', '/funcionarios', { nome: 'Bruno Lima' });
+
+    const { itens } = (await (await comToken(token)).json()) as { itens: { nome: string }[] };
+    const nomes = itens.map((item) => item.nome);
+
+    expect(nomes.indexOf('Ângela Costa')).toBeLessThan(nomes.indexOf('Bruno Lima'));
+  });
+
   it('busca por nome, sem diferenciar maiúsculas', async () => {
     const resposta = await comToken(token, 'GET', '/funcionarios?texto=CARLOS');
     const { itens } = (await resposta.json()) as { itens: { nome: string }[] };
