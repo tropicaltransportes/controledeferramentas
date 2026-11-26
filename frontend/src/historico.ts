@@ -1,7 +1,7 @@
 // Histórico de uso de uma Ferramenta ou de um Funcionário, como a API devolve. Os textos de exibição ficam aqui.
 
 /** Resultado de uma Devolução; null enquanto a Retirada está aberta. */
-export type Resultado = 'ok' | 'com_problema';
+export type Resultado = 'ok' | 'com_problema' | 'extraviada';
 
 export interface RetiradaHistorico {
   id: number;
@@ -54,21 +54,31 @@ export function dataHora(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-/** Rótulo do resultado de uma Devolução; Retirada ainda aberta mostra "Em aberto". */
+/** Rótulo do resultado de uma Retirada: Devolução (OK / Com Problema), Extravio, ou "Em aberto" enquanto não encerrada. */
 export function rotuloResultado(resultado: Resultado | null): string {
-  if (resultado === 'ok') {
-    return 'OK';
+  switch (resultado) {
+    case 'ok':
+      return 'OK';
+    case 'com_problema':
+      return 'Com Problema';
+    case 'extraviada':
+      return 'Extraviada';
+    default:
+      return 'Em aberto';
   }
-
-  return resultado === 'com_problema' ? 'Com Problema' : 'Em aberto';
 }
 
 export function classeResultado(resultado: Resultado | null): string {
-  if (resultado === 'ok') {
-    return 'b-disp';
+  switch (resultado) {
+    case 'ok':
+      return 'b-disp';
+    case 'com_problema':
+      return 'b-prob';
+    case 'extraviada':
+      return 'b-off';
+    default:
+      return 'b-fora';
   }
-
-  return resultado === 'com_problema' ? 'b-prob' : 'b-fora';
 }
 
 export function rotuloDestino(destino: ProblemaHistorico['destino']): string {

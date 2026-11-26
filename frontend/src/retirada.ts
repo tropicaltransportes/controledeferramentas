@@ -28,6 +28,11 @@ export function retiradaRegistrada() {
   versaoRetiradas.value++;
 }
 
+/** Destino dado a uma Ferramenta (extravio, liberação ou baixa) também muda posse e situação: as telas recarregam. */
+export function destinoRegistrado() {
+  versaoRetiradas.value++;
+}
+
 export function mostrarAviso(texto: string) {
   aviso.value = texto;
   clearTimeout(temporizadorAviso);

@@ -2,9 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { chamarApi, ErroApi } from '../api';
 import { fecharDevolucao } from '../devolucao';
-import { type Ferramenta, situacaoDe } from '../ferramentas';
+import { darDestino, type Ferramenta, situacaoDe } from '../ferramentas';
 import { dataCurta, type Resultado } from '../historico';
-import { mostrarAviso, retiradaRegistrada } from '../retirada';
+import { destinoRegistrado, mostrarAviso, retiradaRegistrada } from '../retirada';
 import FotoFerramenta from './FotoFerramenta.vue';
 
 // O Número pode chegar já preenchido (atalho pela Ficha, pela lista ou pelo perfil).
@@ -97,6 +97,31 @@ async function aoEnter() {
 
   if (sugestoes.value[0]) {
     escolher(sugestoes.value[0]);
+  }
+}
+
+// A Ferramenta não voltou: encerra a Retirada como Extraviada. Só o Almoxarife faz isso, por aqui ou pela Ficha.
+async function extraviar() {
+  if (!escolhida.value) {
+    return;
+  }
+
+  const numero = escolhida.value.numero;
+  if (!confirm(`Marcar ${numero} como Extraviada? A Retirada é encerrada sem Devolução e o Responsável fica registrado.`)) {
+    return;
+  }
+
+  erro.value = '';
+  enviando.value = true;
+  try {
+    await darDestino(numero, 'extraviar');
+    mostrarAviso(`${numero} marcada como Extraviada`);
+    destinoRegistrado();
+    fecharDevolucao();
+  } catch (falha) {
+    erro.value = falha instanceof ErroApi ? falha.message : 'Não foi possível marcar como Extraviada.';
+  } finally {
+    enviando.value = false;
   }
 }
 
@@ -217,6 +242,10 @@ async function registrar() {
           Descreva o problema (obrigatório)
           <textarea v-model="descricao" rows="3" aria-required="true" placeholder="O que está errado com a Ferramenta"></textarea>
         </label>
+
+        <button type="button" class="link-botao extravio" :disabled="enviando" @click="extraviar">
+          Não voltou – marcar como Extraviada
+        </button>
       </div>
 
       <p v-if="erro" class="err" role="alert">{{ erro }}</p>

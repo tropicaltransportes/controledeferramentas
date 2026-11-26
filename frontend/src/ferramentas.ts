@@ -99,3 +99,10 @@ export function camposDe(ferramenta: Ferramenta): CamposFerramenta {
     observacoes: ferramenta.observacoes ?? '',
   };
 }
+
+/** Destino dado pelo Almoxarife: extraviar (Retirada aberta) ou, com Problema, liberar ou baixar. */
+export type AcaoDestino = 'extraviar' | 'liberar' | 'baixar';
+
+export function darDestino(numero: string, acao: AcaoDestino): Promise<unknown> {
+  return chamarApi(`/ferramentas/${encodeURIComponent(numero)}/${acao}`, { metodo: 'POST' });
+}

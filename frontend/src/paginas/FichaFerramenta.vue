@@ -5,15 +5,16 @@ import { chamarApi, ErroApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
 import FotoFerramenta from '../components/FotoFerramenta.vue';
 import { abrirDevolucao } from '../devolucao';
-import { type Ferramenta, situacaoDe } from '../ferramentas';
+import { type AcaoDestino, darDestino, type Ferramenta, situacaoDe } from '../ferramentas';
 import {
+  dataHora,
   type HistoricoFerramenta,
   type Registro,
   registroDaRetirada,
   registroDoProblema,
   tempoFora,
 } from '../historico';
-import { abrirRetirada, versaoRetiradas } from '../retirada';
+import { abrirRetirada, destinoRegistrado, mostrarAviso, versaoRetiradas } from '../retirada';
 import { sessao } from '../sessao';
 
 const props = defineProps<{ numero: string }>();
@@ -38,8 +39,36 @@ const abaAtual = computed(() => ABAS.find((item) => item.valor === aba.value) ??
 
 const podeRetirar = computed(() => sessao.usuario?.papel === 'almoxarife');
 
+// Problema que ainda aguarda destino (Liberada ou Baixada): é o que o Almoxarife decide aqui.
+const problemaAguardando = computed(() => historico.value?.problemas.find((item) => item.destino === null) ?? null);
+const enviandoDestino = ref(false);
+const erroDestino = ref('');
+
 function dataCurta(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR');
+}
+
+async function darDestinoAFerramenta(acao: AcaoDestino) {
+  if (!ficha.value) {
+    return;
+  }
+
+  const numero = ficha.value.numero;
+  if (acao === 'baixar' && !confirm(`Baixar ${numero}? Ela sai do almoxarifado para sempre e fica só no histórico.`)) {
+    return;
+  }
+
+  erroDestino.value = '';
+  enviandoDestino.value = true;
+  try {
+    await darDestino(numero, acao);
+    mostrarAviso(acao === 'liberar' ? `${numero} liberada e de volta à circulação` : `${numero} baixada`);
+    destinoRegistrado();
+  } catch (falha) {
+    erroDestino.value = falha instanceof ErroApi ? falha.message : 'Não foi possível concluir a ação.';
+  } finally {
+    enviandoDestino.value = false;
+  }
 }
 
 // Troca de Ficha (pelo histórico do navegador, por exemplo) ou uma Retirada registrada recarrega os dados.
@@ -173,6 +202,25 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
         >
           Devolver
         </button>
+
+        <div v-if="ficha.situacao === 'com_problema'" class="cartao-problema" role="status">
+          <b>Com Problema</b>
+          <template v-if="problemaAguardando">
+            <p class="descricao-problema">{{ problemaAguardando.descricao }}</p>
+            <span class="small muted">
+              {{ problemaAguardando.responsavel.nome }} · registrado em {{ dataHora(problemaAguardando.registradoEm) }}
+            </span>
+          </template>
+          <div v-if="podeRetirar" class="acoes-destino">
+            <button type="button" class="primary" :disabled="enviandoDestino" @click="darDestinoAFerramenta('liberar')">
+              Liberar
+            </button>
+            <button type="button" class="outline" :disabled="enviandoDestino" @click="darDestinoAFerramenta('baixar')">
+              Baixar
+            </button>
+          </div>
+          <p v-if="erroDestino" class="err" role="alert">{{ erroDestino }}</p>
+        </div>
 
         <dl class="specs">
           <template v-for="[rotulo, valor] in itensTecnicos" :key="rotulo">
@@ -342,6 +390,33 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
 
 .registro .small {
   grid-column: 1 / -1;
+}
+
+.cartao-problema {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cartao-problema .descricao-problema {
+  margin: 0;
+  color: var(--ink, inherit);
+}
+
+.acoes-destino {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.acoes-destino button {
+  flex: 1;
+  justify-content: center;
 }
 
 .editar {

@@ -7,6 +7,7 @@ import {
   usuarioDaRequisicao,
 } from './autenticacao';
 import { cabecalhosCors } from './cors';
+import { ehRotaDeDestino, tratarDestinos } from './destinos';
 import { tratarDevolucoes } from './devolucoes';
 import type { Env } from './env';
 import { tratarFerramentas } from './ferramentas';
@@ -41,13 +42,23 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
   }
 
   const ehRotaDeRegistro = pathname === '/retiradas' || pathname === '/devolucoes';
-  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname) && !ehRotaFuncionarios(pathname) && !ehRotaDeRegistro) {
+  if (
+    !ROTAS_PROTEGIDAS.has(pathname) &&
+    !ehRotaFerramentas(pathname) &&
+    !ehRotaFuncionarios(pathname) &&
+    !ehRotaDeRegistro
+  ) {
     return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
   }
 
   const usuario = await usuarioDaRequisicao(request, env, relogio);
   if (!usuario) {
     return naoAutenticado();
+  }
+
+  // Antes de /ferramentas: as ações de destino também começam com /ferramentas/.
+  if (ehRotaDeDestino(pathname)) {
+    return tratarDestinos(request, env, relogio, usuario);
   }
 
   if (ehRotaFerramentas(pathname)) {

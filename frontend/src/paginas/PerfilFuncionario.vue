@@ -42,6 +42,15 @@ const salvando = ref(false);
 const abaAtual = computed(() => ABAS.find((item) => item.valor === aba.value) ?? ABAS[0]);
 const podeRetirar = computed(() => sessao.usuario?.papel === 'almoxarife');
 
+// Problemas e Extravios do Funcionário, contados sobre as Retiradas dele (o histórico já traz o resultado).
+const contagens = computed(() => {
+  const historico = perfil.value?.historico ?? [];
+  return {
+    problemas: historico.filter((item) => item.resultado === 'com_problema').length,
+    extravios: historico.filter((item) => item.resultado === 'extraviada').length,
+  };
+});
+
 function dataCurta(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR');
 }
@@ -125,6 +134,12 @@ async function alterarSituacao() {
       </span>
       <span v-if="perfil.retiradasAtrasadas > 0" class="badge b-atr">
         {{ perfil.retiradasAtrasadas === 1 ? '1 Atrasada' : `${perfil.retiradasAtrasadas} Atrasadas` }}
+      </span>
+      <span v-if="contagens.problemas > 0" class="badge b-prob">
+        {{ contagens.problemas === 1 ? '1 Problema' : `${contagens.problemas} Problemas` }}
+      </span>
+      <span v-if="contagens.extravios > 0" class="badge b-off">
+        {{ contagens.extravios === 1 ? '1 Extravio' : `${contagens.extravios} Extravios` }}
       </span>
 
       <button
