@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { chamarApi } from '../api';
 import FormFerramenta from '../components/FormFerramenta.vue';
 import FotoFerramenta from '../components/FotoFerramenta.vue';
@@ -17,9 +17,12 @@ import {
 } from '../ferramentas';
 
 const router = useRouter();
+const rota = useRoute();
 const podeDevolver = computed(() => sessao.usuario?.papel === 'almoxarife');
 
-const situacao = ref<Filtro>('todas');
+// O Painel abre a lista já filtrada, por exemplo /ferramentas?situacao=atrasada.
+const filtroDaUrl = FILTROS.find((filtro) => filtro.valor === rota.query.situacao)?.valor ?? 'todas';
+const situacao = ref<Filtro>(filtroDaUrl);
 const categoria = ref('');
 const texto = ref('');
 const modo = ref<'cartoes' | 'lista'>('cartoes');

@@ -12,6 +12,7 @@ import { tratarDevolucoes } from './devolucoes';
 import type { Env } from './env';
 import { tratarFerramentas } from './ferramentas';
 import { tratarFuncionarios } from './funcionarios';
+import { tratarPainel } from './painel';
 import { type Relogio, relogioDoAmbiente } from './relogio';
 import { tratarRetiradas } from './retiradas';
 
@@ -42,7 +43,7 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
   }
 
   const ehRotaDeRegistro = pathname === '/retiradas' || pathname === '/devolucoes';
-  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname) && !ehRotaFuncionarios(pathname) && !ehRotaDeRegistro) {
+  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname) && !ehRotaFuncionarios(pathname) && !ehRotaDeRegistro && pathname !== '/painel') {
     return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
   }
 
@@ -70,6 +71,10 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
 
   if (pathname === '/devolucoes') {
     return tratarDevolucoes(request, env, relogio, usuario);
+  }
+
+  if (request.method === 'GET' && pathname === '/painel') {
+    return tratarPainel(request, env, relogio);
   }
 
   if (request.method === 'GET' && pathname === '/eu') {

@@ -1,10 +1,10 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import { chamarApi } from './api';
-import PaginaVazia from './components/PaginaVazia.vue';
 import Entrar from './paginas/Entrar.vue';
 import Ferramentas from './paginas/Ferramentas.vue';
 import FichaFerramenta from './paginas/FichaFerramenta.vue';
 import Funcionarios from './paginas/Funcionarios.vue';
+import Painel from './paginas/Painel.vue';
 import PerfilFuncionario from './paginas/PerfilFuncionario.vue';
 import TrocarSenha from './paginas/TrocarSenha.vue';
 import { definirAoPerderSessao, lerToken, sessao, type UsuarioSessao } from './sessao';
@@ -26,8 +26,7 @@ export const router = createRouter({
     },
     {
       path: '/painel',
-      component: PaginaVazia,
-      props: { titulo: 'Painel' },
+      component: Painel,
       meta: { titulo: 'Painel' },
     },
     {
