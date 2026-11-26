@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { chamarApi, ErroApi } from '../api';
 import { abrirDevolucao } from '../devolucao';
-import { dataHora, type RetiradaHistorico, rotuloResultado } from '../historico';
+import { classeResultado, dataHora, type RetiradaHistorico, rotuloResultado } from '../historico';
 import { type Funcionario, iniciaisDe } from '../funcionarios';
 import { abrirRetirada, versaoRetiradas } from '../retirada';
 import { sessao } from '../sessao';
@@ -20,14 +20,6 @@ interface FerramentaEmPosse {
 interface PerfilDoFuncionario extends Funcionario {
   ferramentasEmPosse: FerramentaEmPosse[];
   historico: RetiradaHistorico[];
-}
-
-function classeResultado(resultado: RetiradaHistorico['resultado']): string {
-  if (resultado === 'ok') {
-    return 'b-disp';
-  }
-
-  return resultado === 'com_problema' ? 'b-prob' : 'b-fora';
 }
 
 type Aba = 'ferramentas' | 'historico';

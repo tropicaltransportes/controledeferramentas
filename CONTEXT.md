@@ -56,6 +56,10 @@ _Avoid_: Turno, jornada
 A situação de uma Ferramenta que voltou danificada ou com defeito. Ela fica fora de circulação até ser liberada.
 _Avoid_: Avariada, quebrada, em manutenção
 
+**Problema**:
+O registro de uma Devolução Com Problema: guarda a descrição, o Responsável da Retirada de origem e fica aguardando destino até a Ferramenta ser Liberada ou Baixada.
+_Avoid_: Defeito, ocorrência, avaria
+
 **Liberada**:
 O destino de uma Ferramenta Com Problema que volta a circular.
 

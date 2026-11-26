@@ -1,12 +1,15 @@
 // Histórico de uso de uma Ferramenta ou de um Funcionário, como a API devolve. Os textos de exibição ficam aqui.
 
+/** Resultado de uma Devolução; null enquanto a Retirada está aberta. */
+export type Resultado = 'ok' | 'com_problema';
+
 export interface RetiradaHistorico {
   id: number;
   ferramenta: { numero: string; nome: string };
   funcionario: { id: number; nome: string };
   retiradaEm: string;
   devolvidaEm: string | null;
-  resultado: 'ok' | 'com_problema' | null;
+  resultado: Resultado | null;
   observacao: string | null;
 }
 
@@ -17,6 +20,16 @@ export interface ProblemaHistorico {
   registradoEm: string;
   destino: 'liberada' | 'baixada' | null;
   destinoEm: string | null;
+}
+
+/** Linha da lista de registros da Ficha, já com o texto e a cor prontos. */
+export interface Registro {
+  chave: string;
+  data: string;
+  titulo: string;
+  detalhe: string;
+  situacao: string;
+  classe: string;
 }
 
 export interface ResumoUso {
@@ -42,12 +55,52 @@ export function dataHora(iso: string): string {
 }
 
 /** Rótulo do resultado de uma Devolução; Retirada ainda aberta mostra "Em aberto". */
-export function rotuloResultado(resultado: RetiradaHistorico['resultado']): string {
+export function rotuloResultado(resultado: Resultado | null): string {
   if (resultado === 'ok') {
     return 'OK';
   }
 
   return resultado === 'com_problema' ? 'Com Problema' : 'Em aberto';
+}
+
+export function classeResultado(resultado: Resultado | null): string {
+  if (resultado === 'ok') {
+    return 'b-disp';
+  }
+
+  return resultado === 'com_problema' ? 'b-prob' : 'b-fora';
+}
+
+export function rotuloDestino(destino: ProblemaHistorico['destino']): string {
+  if (destino === null) {
+    return 'Aguardando destino';
+  }
+
+  return destino === 'liberada' ? 'Liberada' : 'Baixada';
+}
+
+export function registroDaRetirada(retirada: RetiradaHistorico): Registro {
+  const devolucao = retirada.devolvidaEm ? ` · devolvida em ${dataHora(retirada.devolvidaEm)}` : '';
+
+  return {
+    chave: `retirada-${retirada.id}`,
+    data: retirada.retiradaEm,
+    titulo: retirada.funcionario.nome,
+    detalhe: `retirada em ${dataHora(retirada.retiradaEm)}${devolucao}`,
+    situacao: rotuloResultado(retirada.resultado),
+    classe: classeResultado(retirada.resultado),
+  };
+}
+
+export function registroDoProblema(problema: ProblemaHistorico): Registro {
+  return {
+    chave: `problema-${problema.id}`,
+    data: problema.registradoEm,
+    titulo: problema.descricao,
+    detalhe: `${problema.responsavel.nome} · registrado em ${dataHora(problema.registradoEm)}`,
+    situacao: rotuloDestino(problema.destino),
+    classe: problema.destino ? 'b-off' : 'b-prob',
+  };
 }
 
 /** Tempo fora em dias e horas, sem segundos. */

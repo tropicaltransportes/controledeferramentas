@@ -3,14 +3,12 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { chamarApi, ErroApi } from '../api';
 import { fecharDevolucao } from '../devolucao';
 import { type Ferramenta } from '../ferramentas';
-import { dataCurta } from '../historico';
+import { dataCurta, type Resultado } from '../historico';
 import { mostrarAviso, retiradaRegistrada } from '../retirada';
 import FotoFerramenta from './FotoFerramenta.vue';
 
 // O Número pode chegar já preenchido (atalho pela Ficha, pela lista ou pelo perfil).
 const props = defineProps<{ numero: string | null }>();
-
-type Resultado = 'ok' | 'com_problema';
 
 const escolhida = ref<Ferramenta | null>(null);
 const busca = ref('');
@@ -61,6 +59,15 @@ watch(busca, () => {
     sugestoes.value = resposta?.itens ?? [];
   }, 300);
 });
+
+/** Quem está com a Ferramenta e desde quando, como aparece nas sugestões e no cartão. */
+function comQuemDesde(ferramenta: Ferramenta): string {
+  if (!ferramenta.responsavel) {
+    return '';
+  }
+
+  return `Com ${ferramenta.responsavel.nome} desde ${dataCurta(ferramenta.responsavel.retiradaEm)}`;
+}
 
 function escolher(ferramenta: Ferramenta) {
   escolhida.value = ferramenta;
@@ -156,9 +163,7 @@ async function registrar() {
             <button type="button" class="opcao" @click="escolher(item)">
               <span class="num">{{ item.numero }}</span>
               <span class="nome"><b>{{ item.nome }}</b></span>
-              <span class="small muted">
-                Com {{ item.responsavel?.nome }} desde {{ item.responsavel ? dataCurta(item.responsavel.retiradaEm) : '' }}
-              </span>
+              <span class="small muted">{{ comQuemDesde(item) }}</span>
             </button>
           </li>
         </ul>
@@ -182,9 +187,7 @@ async function registrar() {
           <div class="texto">
             <span class="num">{{ escolhida.numero }}</span>
             <b>{{ escolhida.nome }}</b>
-            <span class="small muted">
-              Com {{ escolhida.responsavel?.nome }} desde {{ escolhida.responsavel ? dataCurta(escolhida.responsavel.retiradaEm) : '' }}
-            </span>
+            <span class="small muted">{{ comQuemDesde(escolhida) }}</span>
           </div>
           <button type="button" class="link-botao" @click="trocar">Trocar</button>
         </div>

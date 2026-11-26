@@ -6,7 +6,13 @@ import FormFerramenta from '../components/FormFerramenta.vue';
 import FotoFerramenta from '../components/FotoFerramenta.vue';
 import { abrirDevolucao } from '../devolucao';
 import { type Ferramenta, situacaoDe } from '../ferramentas';
-import { dataHora, type HistoricoFerramenta, type RetiradaHistorico, rotuloResultado, tempoFora } from '../historico';
+import {
+  type HistoricoFerramenta,
+  type Registro,
+  registroDaRetirada,
+  registroDoProblema,
+  tempoFora,
+} from '../historico';
 import { abrirRetirada, versaoRetiradas } from '../retirada';
 import { sessao } from '../sessao';
 
@@ -50,10 +56,9 @@ watch(
 
     try {
       const caminho = `/ferramentas/${encodeURIComponent(numero)}`;
-      [ficha.value, historico.value] = await Promise.all([
-        chamarApi<Ferramenta>(caminho),
-        chamarApi<HistoricoFerramenta>(`${caminho}/historico`),
-      ]);
+      ficha.value = await chamarApi<Ferramenta>(caminho);
+      // Histórico em falta não derruba a Ficha: a aba mostra o aviso no lugar dos registros.
+      historico.value = await chamarApi<HistoricoFerramenta>(`${caminho}/historico`).catch(() => null);
     } catch (falha) {
       if (falha instanceof ErroApi && falha.status === 404) {
         naoEncontrada.value = true;
@@ -67,19 +72,27 @@ watch(
   { immediate: true },
 );
 
-// Resumo mostra só os últimos registros; as abas Histórico e Problemas mostram tudo.
-const retiradasDaAba = computed<RetiradaHistorico[]>(() => {
-  const retiradas = historico.value?.retiradas ?? [];
-  return aba.value === 'resumo' ? retiradas.slice(0, 3) : retiradas;
-});
-
-function classeResultado(resultado: RetiradaHistorico['resultado']): string {
-  if (resultado === 'ok') {
-    return 'b-disp';
+// Resumo mostra só os 3 registros mais recentes, de Retiradas e Problemas juntos;
+// Histórico e Problemas mostram tudo do seu tipo.
+const registros = computed<Registro[]>(() => {
+  const dados = historico.value;
+  if (!dados) {
+    return [];
   }
 
-  return resultado === 'com_problema' ? 'b-prob' : 'b-fora';
-}
+  if (aba.value === 'problemas') {
+    return dados.problemas.map(registroDoProblema);
+  }
+
+  const retiradas = dados.retiradas.map(registroDaRetirada);
+  if (aba.value === 'historico') {
+    return retiradas;
+  }
+
+  return [...retiradas, ...dados.problemas.map(registroDoProblema)]
+    .sort((a, b) => b.data.localeCompare(a.data))
+    .slice(0, 3);
+});
 
 function aoSalvar(salva: Ferramenta) {
   ficha.value = salva;
@@ -208,30 +221,15 @@ const itensTecnicos = computed<[string, string | null][]>(() => {
           </div>
         </dl>
 
-        <template v-if="aba === 'problemas'">
-          <ul v-if="historico?.problemas.length" class="registros">
-            <li v-for="problema in historico.problemas" :key="problema.id" class="registro">
-              <b>{{ problema.descricao }}</b>
-              <span class="small muted">
-                {{ problema.responsavel.nome }} · registrado em {{ dataHora(problema.registradoEm) }}
-              </span>
-              <span class="badge" :class="problema.destino ? 'b-off' : 'b-prob'">
-                {{ problema.destino ? (problema.destino === 'liberada' ? 'Liberada' : 'Baixada') : 'Aguardando destino' }}
-              </span>
-            </li>
-          </ul>
-          <p v-else class="empty">{{ abaAtual.vazio }}</p>
-        </template>
+        <p v-if="ficha && !historico" class="err" role="alert">Não foi possível carregar o histórico desta Ferramenta.</p>
 
-        <template v-else>
+        <template v-else-if="historico">
           <h3 v-if="aba === 'resumo'" class="subtitulo">Últimos registros</h3>
-          <ul v-if="retiradasDaAba.length" class="registros">
-            <li v-for="retirada in retiradasDaAba" :key="retirada.id" class="registro">
-              <b>{{ retirada.funcionario.nome }}</b>
-              <span class="small muted">
-                retirada em {{ dataHora(retirada.retiradaEm) }}<template v-if="retirada.devolvidaEm"> · devolvida em {{ dataHora(retirada.devolvidaEm) }}</template>
-              </span>
-              <span class="badge" :class="classeResultado(retirada.resultado)">{{ rotuloResultado(retirada.resultado) }}</span>
+          <ul v-if="registros.length" class="registros">
+            <li v-for="registro in registros" :key="registro.chave" class="registro">
+              <b>{{ registro.titulo }}</b>
+              <span class="small muted">{{ registro.detalhe }}</span>
+              <span class="badge" :class="registro.classe">{{ registro.situacao }}</span>
             </li>
           </ul>
           <p v-else class="empty">{{ abaAtual.vazio }}</p>
