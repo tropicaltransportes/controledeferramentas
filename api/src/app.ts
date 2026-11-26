@@ -42,12 +42,7 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
   }
 
   const ehRotaDeRegistro = pathname === '/retiradas' || pathname === '/devolucoes';
-  if (
-    !ROTAS_PROTEGIDAS.has(pathname) &&
-    !ehRotaFerramentas(pathname) &&
-    !ehRotaFuncionarios(pathname) &&
-    !ehRotaDeRegistro
-  ) {
+  if (!ROTAS_PROTEGIDAS.has(pathname) && !ehRotaFerramentas(pathname) && !ehRotaFuncionarios(pathname) && !ehRotaDeRegistro) {
     return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
   }
 

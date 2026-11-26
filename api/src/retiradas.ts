@@ -17,7 +17,7 @@ export async function buscarPosses(env: Env, numero?: string): Promise<Map<strin
     `SELECT r.ferramenta_numero AS numero, f.id, f.nome, r.retirada_em AS retiradaEm
        FROM retiradas r
        JOIN funcionarios f ON f.id = r.funcionario_id
-      WHERE r.devolvida_em IS NULL AND (? IS NULL OR r.ferramenta_numero = ?)`,
+      WHERE r.devolvida_em IS NULL AND r.extraviada_em IS NULL AND (? IS NULL OR r.ferramenta_numero = ?)`,
   ).bind(numero ?? null, numero ?? null);
 
   const { results } = await consulta.all<Posse & { numero: string }>();
@@ -27,7 +27,7 @@ export async function buscarPosses(env: Env, numero?: string): Promise<Map<strin
 /** Quantas Retiradas abertas cada Funcionário tem. Quem não tem nenhuma não aparece no mapa. */
 export async function contarAbertasPorFuncionario(env: Env): Promise<Map<number, number>> {
   const { results } = await env.DB.prepare(
-    'SELECT funcionario_id AS id, COUNT(*) AS total FROM retiradas WHERE devolvida_em IS NULL GROUP BY funcionario_id',
+    'SELECT funcionario_id AS id, COUNT(*) AS total FROM retiradas WHERE devolvida_em IS NULL AND extraviada_em IS NULL GROUP BY funcionario_id',
   ).all<{ id: number; total: number }>();
 
   return new Map(results.map((linha) => [linha.id, linha.total]));
@@ -41,7 +41,7 @@ export async function ferramentasEmPosseDe(env: Env, funcionarioId: number): Pro
     `SELECT f.numero, f.nome, f.categoria, r.retirada_em AS retiradaEm
        FROM retiradas r
        JOIN ferramentas f ON f.numero = r.ferramenta_numero
-      WHERE r.funcionario_id = ? AND r.devolvida_em IS NULL
+      WHERE r.funcionario_id = ? AND r.devolvida_em IS NULL AND r.extraviada_em IS NULL
       ORDER BY r.retirada_em, f.numero`,
   )
     .bind(funcionarioId)

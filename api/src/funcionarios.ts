@@ -97,7 +97,7 @@ async function obter(id: number, env: Env, relogio: Relogio): Promise<Response> 
 /** Quantas Retiradas abertas de cada Funcionário já passaram do prazo do Expediente. */
 async function atrasadasPorFuncionario(env: Env, agora: Date): Promise<Map<number, number>> {
   const { results } = await env.DB.prepare(
-    'SELECT funcionario_id AS id, retirada_em AS retiradaEm FROM retiradas WHERE devolvida_em IS NULL',
+    'SELECT funcionario_id AS id, retirada_em AS retiradaEm FROM retiradas WHERE devolvida_em IS NULL AND extraviada_em IS NULL',
   ).all<{ id: number; retiradaEm: string }>();
 
   const porFuncionario = new Map<number, number>();

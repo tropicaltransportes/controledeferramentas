@@ -7,7 +7,7 @@ export const retirada = reactive<{ aberta: boolean; funcionarioId: number | null
   numero: null,
 });
 
-/** Sobe a cada Retirada ou Devolução registrada. As telas que mostram posse observam este número e recarregam. */
+/** Sobe a cada Retirada, Devolução ou destino (extravio, liberação, baixa). As telas que mostram posse observam este número e recarregam. */
 export const versaoRetiradas = ref(0);
 
 /** Aviso curto depois de uma ação (toast). Some sozinho. */
@@ -25,11 +25,6 @@ export function fecharRetirada() {
 }
 
 export function retiradaRegistrada() {
-  versaoRetiradas.value++;
-}
-
-/** Destino dado a uma Ferramenta (extravio, liberação ou baixa) também muda posse e situação: as telas recarregam. */
-export function destinoRegistrado() {
   versaoRetiradas.value++;
 }
 

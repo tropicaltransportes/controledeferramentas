@@ -40,7 +40,7 @@ async function registrar(request: Request, env: Env, relogio: Relogio, usuario: 
   const aberta = await env.DB.prepare(
     `SELECT id, funcionario_id AS funcionarioId
        FROM retiradas
-      WHERE ferramenta_numero = ? AND devolvida_em IS NULL`,
+      WHERE ferramenta_numero = ? AND devolvida_em IS NULL AND extraviada_em IS NULL`,
   )
     .bind(numero)
     .first<{ id: number; funcionarioId: number }>();
@@ -58,7 +58,7 @@ async function registrar(request: Request, env: Env, relogio: Relogio, usuario: 
     env.DB.prepare(
       `UPDATE retiradas
           SET devolvida_em = ?, resultado = ?, observacao = ?, devolucao_registrada_por = ?
-        WHERE id = ? AND devolvida_em IS NULL`,
+        WHERE id = ? AND devolvida_em IS NULL AND extraviada_em IS NULL`,
     ).bind(agora, resultado, resultado === 'com_problema' ? descricao : null, usuario.id, aberta.id),
   ];
 

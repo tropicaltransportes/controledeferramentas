@@ -14,7 +14,7 @@ import {
   registroDoProblema,
   tempoFora,
 } from '../historico';
-import { abrirRetirada, destinoRegistrado, mostrarAviso, versaoRetiradas } from '../retirada';
+import { abrirRetirada, mostrarAviso, retiradaRegistrada, versaoRetiradas } from '../retirada';
 import { sessao } from '../sessao';
 
 const props = defineProps<{ numero: string }>();
@@ -54,16 +54,12 @@ async function darDestinoAFerramenta(acao: AcaoDestino) {
   }
 
   const numero = ficha.value.numero;
-  if (acao === 'baixar' && !confirm(`Baixar ${numero}? Ela sai do almoxarifado para sempre e fica só no histórico.`)) {
-    return;
-  }
-
   erroDestino.value = '';
   enviandoDestino.value = true;
   try {
     await darDestino(numero, acao);
     mostrarAviso(acao === 'liberar' ? `${numero} liberada e de volta à circulação` : `${numero} baixada`);
-    destinoRegistrado();
+    retiradaRegistrada();
   } catch (falha) {
     erroDestino.value = falha instanceof ErroApi ? falha.message : 'Não foi possível concluir a ação.';
   } finally {

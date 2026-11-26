@@ -1,8 +1,24 @@
 import { type Usuario, exigirPapel } from './autenticacao';
 import type { Env } from './env';
 import type { Relogio } from './relogio';
+import { normalizarNumero } from './retiradas';
 
 const FORMATO_ROTA = /^\/ferramentas\/([^/]+)\/(extraviar|liberar|baixar)$/;
+
+type Acao = 'extraviar' | 'liberar' | 'baixar';
+
+/** Situação da Ferramenta e destino do Problema que cada ação produz. */
+const DESTINO_DO_PROBLEMA = {
+  liberar: { estado: 'disponivel', destino: 'liberada' },
+  baixar: { estado: 'baixada', destino: 'baixada' },
+} as const;
+
+interface Contexto {
+  env: Env;
+  relogio: Relogio;
+  usuario: Usuario;
+  numero: string;
+}
 
 /** Rotas de destino das Ferramentas: /ferramentas/:numero/(extraviar|liberar|baixar). */
 export function ehRotaDeDestino(pathname: string): boolean {
@@ -11,12 +27,12 @@ export function ehRotaDeDestino(pathname: string): boolean {
 
 /**
  * Dá destino às Ferramentas. Só o Almoxarife faz isso.
- * - extraviar: Ferramenta retirada que não voltou; encerra a Retirada sem Devolução.
+ * - extraviar: Ferramenta com Retirada aberta que não voltou; encerra a Retirada sem Devolução.
  * - liberar / baixar: Ferramenta Com Problema; fecha o Problema aguardando destino.
  */
 export async function tratarDestinos(request: Request, env: Env, relogio: Relogio, usuario: Usuario): Promise<Response> {
-  const casa = new URL(request.url).pathname.match(FORMATO_ROTA);
-  if (request.method !== 'POST' || !casa) {
+  const partesDaRota = new URL(request.url).pathname.match(FORMATO_ROTA);
+  if (request.method !== 'POST' || !partesDaRota) {
     return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
   }
 
@@ -25,8 +41,7 @@ export async function tratarDestinos(request: Request, env: Env, relogio: Relogi
     return proibido;
   }
 
-  const numero = decodificar(casa[1]);
-  const acao = casa[2] as 'extraviar' | 'liberar' | 'baixar';
+  const numero = normalizarNumero(decodificar(partesDaRota[1]));
   if (numero === null) {
     return Response.json({ erro: 'Ferramenta não encontrada' }, { status: 404 });
   }
@@ -38,16 +53,19 @@ export async function tratarDestinos(request: Request, env: Env, relogio: Relogi
     return Response.json({ erro: 'Ferramenta não encontrada' }, { status: 404 });
   }
 
+  const contexto: Contexto = { env, relogio, usuario, numero };
+  const acao = partesDaRota[2] as Acao;
+
   if (acao === 'extraviar') {
-    return extraviar(numero, env, relogio, usuario);
+    return extraviar(contexto);
   }
 
-  return destinarAProblema(numero, acao, ferramenta.estado, env, relogio, usuario);
+  return destinarAProblema(contexto, acao, ferramenta.estado);
 }
 
-async function extraviar(numero: string, env: Env, relogio: Relogio, usuario: Usuario): Promise<Response> {
+async function extraviar({ env, relogio, numero }: Contexto): Promise<Response> {
   const aberta = await env.DB.prepare(
-    'SELECT id FROM retiradas WHERE ferramenta_numero = ? AND devolvida_em IS NULL',
+    'SELECT id FROM retiradas WHERE ferramenta_numero = ? AND devolvida_em IS NULL AND extraviada_em IS NULL',
   )
     .bind(numero)
     .first<{ id: number }>();
@@ -57,57 +75,53 @@ async function extraviar(numero: string, env: Env, relogio: Relogio, usuario: Us
   }
 
   const agora = relogio().toISOString();
-  // Tudo ou nada: a Retirada é encerrada e a Ferramenta vira Extraviada no mesmo batch.
-  // A Ferramenta só muda se a Retirada acabou de ser encerrada com este horário (mesmo padrão da Devolução).
-  const [encerrada] = await env.DB.batch([
-    env.DB.prepare(
-      `UPDATE retiradas
-          SET devolvida_em = ?, resultado = 'extraviada', devolucao_registrada_por = ?
-        WHERE id = ? AND devolvida_em IS NULL`,
-    ).bind(agora, usuario.id, aberta.id),
+  // Tudo ou nada, e na ordem certa: a Ferramenta só vira Extraviada enquanto a Retirada ainda está aberta,
+  // e só então a Retirada é encerrada. Uma ação simultânea não deixa nada pela metade e não depende de horário.
+  const [ferramenta] = await env.DB.batch([
     env.DB.prepare(
       `UPDATE ferramentas SET estado = 'extraviada', atualizado_em = ?
-        WHERE numero = ? AND EXISTS (SELECT 1 FROM retiradas WHERE id = ? AND devolvida_em = ?)`,
-    ).bind(agora, numero, aberta.id, agora),
+        WHERE numero = ? AND estado = 'disponivel'
+          AND EXISTS (SELECT 1 FROM retiradas WHERE id = ? AND devolvida_em IS NULL AND extraviada_em IS NULL)`,
+    ).bind(agora, numero, aberta.id),
+    env.DB.prepare(
+      `UPDATE retiradas SET extraviada_em = ?, resultado = 'extraviada'
+        WHERE id = ? AND devolvida_em IS NULL AND extraviada_em IS NULL`,
+    ).bind(agora, aberta.id),
   ]);
 
-  if (encerrada.meta.changes === 0) {
-    return Response.json({ erro: `${numero} acabou de ser devolvida. Confira e tente de novo` }, { status: 409 });
+  if (ferramenta.meta.changes === 0) {
+    return Response.json({ erro: `${numero} acabou de mudar de situação. Confira e tente de novo` }, { status: 409 });
   }
 
   return Response.json({ numero, estado: 'extraviada', atualizadoEm: agora });
 }
 
 async function destinarAProblema(
-  numero: string,
+  { env, relogio, usuario, numero }: Contexto,
   acao: 'liberar' | 'baixar',
   estadoAtual: string,
-  env: Env,
-  relogio: Relogio,
-  usuario: Usuario,
 ): Promise<Response> {
+  const { estado: novoEstado, destino } = DESTINO_DO_PROBLEMA[acao];
+
   if (estadoAtual !== 'com_problema') {
-    return Response.json({ erro: `${numero} não está Com Problema, então não pode ser ${acao === 'liberar' ? 'liberada' : 'baixada'}` }, { status: 409 });
+    return Response.json({ erro: `${numero} não está Com Problema, então não pode ser ${destino}` }, { status: 409 });
   }
 
-  const novoEstado = acao === 'liberar' ? 'disponivel' : 'baixada';
-  const destino = acao === 'liberar' ? 'liberada' : 'baixada';
   const agora = relogio().toISOString();
-
-  // Tudo ou nada: a Ferramenta muda de estado e o Problema aguardando destino fecha junto.
-  // O Problema só fecha se a Ferramenta acabou de mudar com este horário (uma ação simultânea não deixa nada pela metade).
-  const [mudou] = await env.DB.batch([
-    env.DB.prepare(
-      `UPDATE ferramentas SET estado = ?, atualizado_em = ? WHERE numero = ? AND estado = 'com_problema'`,
-    ).bind(novoEstado, agora, numero),
+  // Tudo ou nada, e na ordem certa: o Problema só fecha enquanto a Ferramenta ainda está Com Problema;
+  // depois a Ferramenta muda de situação. Uma ação simultânea falha no UPDATE da Ferramenta e nada fica pela metade.
+  const [, ferramenta] = await env.DB.batch([
     env.DB.prepare(
       `UPDATE problemas SET destino = ?, destino_em = ?, destino_registrado_por = ?
         WHERE ferramenta_numero = ? AND destino IS NULL
-          AND EXISTS (SELECT 1 FROM ferramentas WHERE numero = ? AND atualizado_em = ?)`,
-    ).bind(destino, agora, usuario.id, numero, numero, agora),
+          AND EXISTS (SELECT 1 FROM ferramentas WHERE numero = ? AND estado = 'com_problema')`,
+    ).bind(destino, agora, usuario.id, numero, numero),
+    env.DB.prepare(
+      `UPDATE ferramentas SET estado = ?, atualizado_em = ? WHERE numero = ? AND estado = 'com_problema'`,
+    ).bind(novoEstado, agora, numero),
   ]);
 
-  if (mudou.meta.changes === 0) {
+  if (ferramenta.meta.changes === 0) {
     return Response.json({ erro: `${numero} acabou de mudar de situação. Confira e tente de novo` }, { status: 409 });
   }
 

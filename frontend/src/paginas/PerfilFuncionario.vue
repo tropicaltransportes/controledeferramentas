@@ -42,7 +42,7 @@ const salvando = ref(false);
 const abaAtual = computed(() => ABAS.find((item) => item.valor === aba.value) ?? ABAS[0]);
 const podeRetirar = computed(() => sessao.usuario?.papel === 'almoxarife');
 
-// Problemas e Extravios do Funcionário, contados sobre as Retiradas dele (o histórico já traz o resultado).
+// Problemas e Extraviadas do Funcionário, contadas sobre as Retiradas dele (o histórico já traz o resultado).
 const contagens = computed(() => {
   const historico = perfil.value?.historico ?? [];
   return {
@@ -139,7 +139,7 @@ async function alterarSituacao() {
         {{ contagens.problemas === 1 ? '1 Problema' : `${contagens.problemas} Problemas` }}
       </span>
       <span v-if="contagens.extravios > 0" class="badge b-off">
-        {{ contagens.extravios === 1 ? '1 Extravio' : `${contagens.extravios} Extravios` }}
+        {{ contagens.extravios === 1 ? '1 Extraviada' : `${contagens.extravios} Extraviadas` }}
       </span>
 
       <button

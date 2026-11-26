@@ -4,7 +4,7 @@ import { chamarApi, ErroApi } from '../api';
 import { fecharDevolucao } from '../devolucao';
 import { darDestino, type Ferramenta, situacaoDe } from '../ferramentas';
 import { dataCurta, type Resultado } from '../historico';
-import { destinoRegistrado, mostrarAviso, retiradaRegistrada } from '../retirada';
+import { mostrarAviso, retiradaRegistrada } from '../retirada';
 import FotoFerramenta from './FotoFerramenta.vue';
 
 // O Número pode chegar já preenchido (atalho pela Ficha, pela lista ou pelo perfil).
@@ -100,7 +100,7 @@ async function aoEnter() {
   }
 }
 
-// A Ferramenta não voltou: encerra a Retirada como Extraviada. Só o Almoxarife faz isso, por aqui ou pela Ficha.
+// A Ferramenta não voltou: encerra a Retirada como Extraviada, sem Devolução. Só o Almoxarife faz isso.
 async function extraviar() {
   if (!escolhida.value) {
     return;
@@ -116,7 +116,7 @@ async function extraviar() {
   try {
     await darDestino(numero, 'extraviar');
     mostrarAviso(`${numero} marcada como Extraviada`);
-    destinoRegistrado();
+    retiradaRegistrada();
     fecharDevolucao();
   } catch (falha) {
     erro.value = falha instanceof ErroApi ? falha.message : 'Não foi possível marcar como Extraviada.';

@@ -1,6 +1,6 @@
 // Histórico de uso de uma Ferramenta ou de um Funcionário, como a API devolve. Os textos de exibição ficam aqui.
 
-/** Resultado de uma Devolução; null enquanto a Retirada está aberta. */
+/** Como a Retirada foi encerrada: Devolução (OK / Com Problema) ou Extraviada. Null enquanto está aberta. */
 export type Resultado = 'ok' | 'com_problema' | 'extraviada';
 
 export interface RetiradaHistorico {
@@ -9,6 +9,7 @@ export interface RetiradaHistorico {
   funcionario: { id: number; nome: string };
   retiradaEm: string;
   devolvidaEm: string | null;
+  extraviadaEm: string | null;
   resultado: Resultado | null;
   observacao: string | null;
 }
@@ -54,31 +55,25 @@ export function dataHora(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-/** Rótulo do resultado de uma Retirada: Devolução (OK / Com Problema), Extravio, ou "Em aberto" enquanto não encerrada. */
+/** Rótulo e cor de cada resultado; Retirada aberta (null) é "Em aberto". */
+const RESULTADOS: Record<Resultado | 'aberta', { rotulo: string; classe: string }> = {
+  ok: { rotulo: 'OK', classe: 'b-disp' },
+  com_problema: { rotulo: 'Com Problema', classe: 'b-prob' },
+  extraviada: { rotulo: 'Extraviada', classe: 'b-off' },
+  aberta: { rotulo: 'Em aberto', classe: 'b-fora' },
+};
+
+function chaveDoResultado(resultado: Resultado | null): Resultado | 'aberta' {
+  return resultado ?? 'aberta';
+}
+
+/** Rótulo do resultado de uma Retirada, como aparece na Ficha e no perfil. */
 export function rotuloResultado(resultado: Resultado | null): string {
-  switch (resultado) {
-    case 'ok':
-      return 'OK';
-    case 'com_problema':
-      return 'Com Problema';
-    case 'extraviada':
-      return 'Extraviada';
-    default:
-      return 'Em aberto';
-  }
+  return RESULTADOS[chaveDoResultado(resultado)].rotulo;
 }
 
 export function classeResultado(resultado: Resultado | null): string {
-  switch (resultado) {
-    case 'ok':
-      return 'b-disp';
-    case 'com_problema':
-      return 'b-prob';
-    case 'extraviada':
-      return 'b-off';
-    default:
-      return 'b-fora';
-  }
+  return RESULTADOS[chaveDoResultado(resultado)].classe;
 }
 
 export function rotuloDestino(destino: ProblemaHistorico['destino']): string {
@@ -90,13 +85,17 @@ export function rotuloDestino(destino: ProblemaHistorico['destino']): string {
 }
 
 export function registroDaRetirada(retirada: RetiradaHistorico): Registro {
-  const devolucao = retirada.devolvidaEm ? ` · devolvida em ${dataHora(retirada.devolvidaEm)}` : '';
+  const encerramento = retirada.devolvidaEm
+    ? ` · devolvida em ${dataHora(retirada.devolvidaEm)}`
+    : retirada.extraviadaEm
+      ? ` · extraviada em ${dataHora(retirada.extraviadaEm)}`
+      : '';
 
   return {
     chave: `retirada-${retirada.id}`,
     data: retirada.retiradaEm,
     titulo: retirada.funcionario.nome,
-    detalhe: `retirada em ${dataHora(retirada.retiradaEm)}${devolucao}`,
+    detalhe: `retirada em ${dataHora(retirada.retiradaEm)}${encerramento}`,
     situacao: rotuloResultado(retirada.resultado),
     classe: classeResultado(retirada.resultado),
   };

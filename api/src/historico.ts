@@ -1,14 +1,16 @@
 import type { Env } from './env';
 import type { Relogio } from './relogio';
 
-/** Uma Retirada no histórico: aberta enquanto `devolvidaEm` é null. */
+/** Uma Retirada no histórico: aberta enquanto não tem `devolvidaEm` nem `extraviadaEm`. */
 export interface RetiradaHistorico {
   id: number;
   ferramenta: { numero: string; nome: string };
   funcionario: { id: number; nome: string };
   retiradaEm: string;
   devolvidaEm: string | null;
-  resultado: 'ok' | 'com_problema' | null;
+  /** Data do Extravio, quando a Retirada foi encerrada como Extraviada (sem Devolução). */
+  extraviadaEm: string | null;
+  resultado: 'ok' | 'com_problema' | 'extraviada' | null;
   observacao: string | null;
 }
 
@@ -38,7 +40,8 @@ interface LinhaRetirada {
   funcionarioNome: string;
   retiradaEm: string;
   devolvidaEm: string | null;
-  resultado: 'ok' | 'com_problema' | null;
+  extraviadaEm: string | null;
+  resultado: 'ok' | 'com_problema' | 'extraviada' | null;
   observacao: string | null;
 }
 
@@ -54,7 +57,7 @@ interface LinhaProblema {
 
 const CONSULTA_RETIRADAS = `SELECT r.id, r.ferramenta_numero AS numero, fe.nome AS ferramentaNome,
     f.id AS funcionarioId, f.nome AS funcionarioNome, r.retirada_em AS retiradaEm,
-    r.devolvida_em AS devolvidaEm, r.resultado, r.observacao
+    r.devolvida_em AS devolvidaEm, r.extraviada_em AS extraviadaEm, r.resultado, r.observacao
   FROM retiradas r
   JOIN funcionarios f ON f.id = r.funcionario_id
   JOIN ferramentas fe ON fe.numero = r.ferramenta_numero`;
@@ -109,7 +112,8 @@ export function resumirUso(
 ): ResumoUso {
   const agora = relogio().getTime();
   const tempoForaMs = retiradas.reduce((total, retirada) => {
-    const fim = retirada.devolvidaEm ? Date.parse(retirada.devolvidaEm) : agora;
+    const fimRegistrado = retirada.devolvidaEm ?? retirada.extraviadaEm;
+    const fim = fimRegistrado ? Date.parse(fimRegistrado) : agora;
     return total + (fim - Date.parse(retirada.retiradaEm));
   }, 0);
 
@@ -128,6 +132,7 @@ function paraRetirada(linha: LinhaRetirada): RetiradaHistorico {
     funcionario: { id: linha.funcionarioId, nome: linha.funcionarioNome },
     retiradaEm: linha.retiradaEm,
     devolvidaEm: linha.devolvidaEm,
+    extraviadaEm: linha.extraviadaEm,
     resultado: linha.resultado,
     observacao: linha.observacao,
   };

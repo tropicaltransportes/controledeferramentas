@@ -66,7 +66,7 @@ async function listar(situacao: string): Promise<string[]> {
 }
 
 async function historico(numero: string): Promise<{
-  retiradas: { resultado: string | null; devolvidaEm: string | null; funcionario: { nome: string } }[];
+  retiradas: { resultado: string | null; devolvidaEm: string | null; extraviadaEm: string | null; funcionario: { nome: string } }[];
   problemas: { destino: string | null; destinoEm: string | null }[];
 }> {
   return (await comToken(token, 'GET', `/ferramentas/${numero}/historico`)).json();
@@ -107,7 +107,20 @@ describe('POST /ferramentas/:numero/extraviar', () => {
         funcionario: expect.objectContaining({ nome: 'Carlos Silva' }),
       }),
     ]);
-    expect(retiradas[0].devolvidaEm).not.toBeNull();
+    expect(retiradas[0].devolvidaEm).toBeNull();
+    expect(retiradas[0].extraviadaEm).not.toBeNull();
+  });
+
+  it('Devolução de Ferramenta extraviada responde 409 e não reabre a Retirada', async () => {
+    await cadastrarFerramenta('F-001');
+    const carlos = await cadastrarFuncionario('Carlos Silva');
+    await retirar(carlos, ['F-001']);
+    await acao('F-001', 'extraviar');
+
+    const resposta = await comToken(token, 'POST', '/devolucoes', { numero: 'F-001', resultado: 'ok' });
+
+    expect(resposta.status).toBe(409);
+    expect(await ficha('F-001')).toMatchObject({ situacao: 'extraviada' });
   });
 
   it('a Ferramenta extraviada sai de Todas e aparece no filtro Baixadas / Extraviadas', async () => {
