@@ -15,6 +15,8 @@ interface FerramentaEmPosse {
   nome: string;
   categoria: string;
   retiradaEm: string;
+  /** Retirada já depois do prazo do Expediente. Vêm primeiro na lista. */
+  atrasada: boolean;
 }
 
 interface PerfilDoFuncionario extends Funcionario {
@@ -121,6 +123,9 @@ async function alterarSituacao() {
       <span class="badge" :class="perfil.ativo ? 'b-disp' : 'b-off'">
         {{ perfil.ativo ? 'Ativo' : 'Inativo' }}
       </span>
+      <span v-if="perfil.retiradasAtrasadas > 0" class="badge b-atr">
+        {{ perfil.retiradasAtrasadas === 1 ? '1 Atrasada' : `${perfil.retiradasAtrasadas} Atrasadas` }}
+      </span>
 
       <button
         v-if="podeRetirar && perfil.ativo"
@@ -161,6 +166,7 @@ async function alterarSituacao() {
             <RouterLink :to="`/ferramentas/${encodeURIComponent(ferramenta.numero)}`" class="posse-item">
               <span class="num">{{ ferramenta.numero }}</span>
               <b>{{ ferramenta.nome }}</b>
+              <span v-if="ferramenta.atrasada" class="badge b-atr">Atrasada</span>
               <span class="small muted">desde {{ dataCurta(ferramenta.retiradaEm) }}</span>
             </RouterLink>
             <button

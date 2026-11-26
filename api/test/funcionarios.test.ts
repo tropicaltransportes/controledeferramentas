@@ -57,6 +57,7 @@ describe('POST /funcionarios', () => {
       funcao: 'Mecânico',
       ativo: true,
       retiradasAbertas: 0,
+      retiradasAtrasadas: 0,
     });
   });
 
@@ -152,6 +153,7 @@ describe('GET /funcionarios/:id e PUT /funcionarios/:id', () => {
       funcao: 'Mecânico',
       ativo: true,
       retiradasAbertas: 0,
+      retiradasAtrasadas: 0,
       ferramentasEmPosse: [],
       historico: [],
     });

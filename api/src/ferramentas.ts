@@ -1,4 +1,5 @@
 import type { Env } from './env';
+import { estaAtrasada } from './expediente';
 import { problemasDaFerramenta, resumirUso, retiradasDaFerramenta } from './historico';
 import type { Relogio } from './relogio';
 import { buscarPosses, type Posse } from './retiradas';
@@ -17,7 +18,7 @@ const CATEGORIAS = [
 ] as const;
 
 type Estado = 'disponivel' | 'com_problema' | 'baixada' | 'extraviada';
-type Situacao = 'no_almoxarifado' | 'fora' | 'com_problema' | 'baixada' | 'extraviada';
+type Situacao = 'no_almoxarifado' | 'fora' | 'atrasada' | 'com_problema' | 'baixada' | 'extraviada';
 type Filtro ='todas' | 'no_almoxarifado' | 'fora' | 'atrasada' | 'com_problema' | 'baixadas_extraviadas';
 
 const FILTROS: Filtro[] = [
@@ -99,7 +100,7 @@ export async function tratarFerramentas(request: Request, env: Env, relogio: Rel
   const { pathname } = url;
 
   if (request.method === 'GET' && pathname === '/ferramentas') {
-    return listar(url.searchParams, env);
+    return listar(url.searchParams, env, relogio);
   }
 
   if (request.method === 'GET' && pathname === '/ferramentas/categorias') {
@@ -142,14 +143,14 @@ export async function tratarFerramentas(request: Request, env: Env, relogio: Rel
     }
 
     return request.method === 'GET'
-      ? obter(numero, env)
+      ? obter(numero, env, relogio)
       : editar(numero, request, env, relogio);
   }
 
   return Response.json({ erro: 'Rota não encontrada' }, { status: 404 });
 }
 
-async function listar(params: URLSearchParams, env: Env): Promise<Response> {
+async function listar(params: URLSearchParams, env: Env, relogio: Relogio): Promise<Response> {
   const situacao = params.get('situacao') ?? 'todas';
   if (!isFiltro(situacao)) {
     return Response.json({ erro: 'Situação de filtro desconhecida' }, { status: 422 });
@@ -167,9 +168,10 @@ async function listar(params: URLSearchParams, env: Env): Promise<Response> {
     return !texto || buscaCasa(linha, texto);
   });
 
+  const agora = relogio();
   const porSituacao = filtradas.map((linha) => ({
     linha,
-    situacao: situacaoDaFerramenta(linha.estado, posses.get(linha.numero)),
+    situacao: situacaoDaFerramenta(linha.estado, posses.get(linha.numero), agora),
   }));
 
   const contagens = Object.fromEntries(
@@ -179,7 +181,7 @@ async function listar(params: URLSearchParams, env: Env): Promise<Response> {
   return Response.json({
     itens: porSituacao
       .filter((item) => pertenceAoFiltro(item.situacao, situacao))
-      .map((item) => paraFerramenta(item.linha, posses.get(item.linha.numero))),
+      .map((item) => paraFerramenta(item.linha, posses.get(item.linha.numero), agora)),
     contagens,
   });
 }
@@ -191,13 +193,13 @@ async function proximoNumero(env: Env): Promise<Response> {
   return Response.json({ numero: formatarNumero(maior + 1) });
 }
 
-async function obter(numero: string, env: Env): Promise<Response> {
+async function obter(numero: string, env: Env, relogio: Relogio): Promise<Response> {
   const linha = await buscarLinha(numero, env);
   if (!linha) {
     return naoEncontrada();
   }
 
-  return Response.json(paraFerramenta(linha, (await buscarPosses(env, numero)).get(numero)));
+  return Response.json(paraFerramenta(linha, (await buscarPosses(env, numero)).get(numero), relogio()));
 }
 
 /** Aba Histórico e aba Problemas da Ficha, além dos números de uso do Resumo. */
@@ -261,7 +263,7 @@ async function cadastrar(request: Request, env: Env, relogio: Relogio): Promise<
   }
 
   const linha = await buscarLinha(numero, env);
-  return Response.json(paraFerramenta(linha as LinhaFerramenta), { status: 201 });
+  return Response.json(paraFerramenta(linha as LinhaFerramenta, undefined, relogio()), { status: 201 });
 }
 
 async function editar(numero: string, request: Request, env: Env, relogio: Relogio): Promise<Response> {
@@ -296,7 +298,7 @@ async function editar(numero: string, request: Request, env: Env, relogio: Relog
     )
     .run();
 
-  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta, await posseDe(numero, env)));
+  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta, await posseDe(numero, env), relogio()));
 }
 
 /** Troca a foto da Ferramenta. O corpo é a própria imagem; o Content-Type dela é guardado junto. */
@@ -324,7 +326,7 @@ async function enviarFoto(numero: string, request: Request, env: Env, relogio: R
     .bind(new Uint8Array(bytes), tipo, relogio().toISOString(), numero)
     .run();
 
-  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta, await posseDe(numero, env)));
+  return Response.json(paraFerramenta((await buscarLinha(numero, env)) as LinhaFerramenta, await posseDe(numero, env), relogio()));
 }
 
 async function lerFoto(numero: string, env: Env): Promise<Response> {
@@ -401,10 +403,13 @@ function textoDe(valor: unknown): string | null {
   return valor.trim() || null;
 }
 
-/** Fora vale quando a Ferramenta está disponível e com uma Retirada aberta. */
-function situacaoDaFerramenta(estado: Estado, posse: Posse | undefined): Situacao {
+/**
+ * Fora vale quando a Ferramenta está disponível e com uma Retirada aberta.
+ * Atrasada substitui Fora quando a Retirada passou do prazo do Expediente.
+ */
+function situacaoDaFerramenta(estado: Estado, posse: Posse | undefined, agora: Date): Situacao {
   if (estado === 'disponivel' && posse) {
-    return 'fora';
+    return estaAtrasada(posse.retiradaEm, agora) ? 'atrasada' : 'fora';
   }
 
   return SITUACAO_DO_ESTADO[estado];
@@ -418,13 +423,12 @@ function pertenceAoFiltro(situacao: Situacao, filtro: Filtro): boolean {
       return situacao === 'no_almoxarifado';
     case 'fora':
       return situacao === 'fora';
+    case 'atrasada':
+      return situacao === 'atrasada';
     case 'com_problema':
       return situacao === 'com_problema';
     case 'baixadas_extraviadas':
       return situacao === 'baixada' || situacao === 'extraviada';
-    // Atrasada depende da regra de Expediente, que entra na próxima fatia.
-    case 'atrasada':
-      return false;
   }
 }
 
@@ -470,7 +474,7 @@ async function buscarLinha(numero: string, env: Env): Promise<LinhaFerramenta | 
     .first<LinhaFerramenta>();
 }
 
-function paraFerramenta(linha: LinhaFerramenta, posse?: Posse): Ferramenta {
+function paraFerramenta(linha: LinhaFerramenta, posse: Posse | undefined, agora: Date): Ferramenta {
   // Situação exibida: derivada aqui, na API. A tela só mostra o que vem daqui.
   return {
     numero: linha.numero,
@@ -483,7 +487,7 @@ function paraFerramenta(linha: LinhaFerramenta, posse?: Posse): Ferramenta {
     aquisicao: linha.aquisicao,
     observacoes: linha.observacoes,
     temFoto: linha.foto_tipo !== null,
-    situacao: situacaoDaFerramenta(linha.estado, posse),
+    situacao: situacaoDaFerramenta(linha.estado, posse, agora),
     responsavel: posse ?? null,
     criadoEm: linha.criado_em,
     atualizadoEm: linha.atualizado_em,

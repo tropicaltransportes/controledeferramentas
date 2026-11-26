@@ -55,7 +55,7 @@ async function rotear(request: Request, env: Env, relogio: Relogio): Promise<Res
   }
 
   if (ehRotaFuncionarios(pathname)) {
-    return tratarFuncionarios(request, env);
+    return tratarFuncionarios(request, env, relogio);
   }
 
   if (pathname === '/retiradas') {

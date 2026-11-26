@@ -92,6 +92,9 @@ function aoSalvar(funcionario: Funcionario) {
         <span class="small">
           {{ funcionario.retiradasAbertas === 1 ? '1 Ferramenta em posse' : `${funcionario.retiradasAbertas} Ferramentas em posse` }}
         </span>
+        <span v-if="funcionario.retiradasAtrasadas > 0" class="badge b-atr">
+          {{ funcionario.retiradasAtrasadas === 1 ? '1 Atrasada' : `${funcionario.retiradasAtrasadas} Atrasadas` }}
+        </span>
       </div>
       <span v-if="!funcionario.ativo" class="badge b-off">Inativo</span>
     </RouterLink>

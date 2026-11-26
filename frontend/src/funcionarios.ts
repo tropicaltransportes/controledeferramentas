@@ -6,6 +6,8 @@ export interface Funcionario {
   funcao: string | null;
   ativo: boolean;
   retiradasAbertas: number;
+  /** Retiradas abertas já depois do prazo do Expediente. Quem tem alguma aparece primeiro. */
+  retiradasAtrasadas: number;
 }
 
 /** Iniciais para o avatar: primeira e última palavra do nome. */

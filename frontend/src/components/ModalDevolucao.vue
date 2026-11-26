@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { chamarApi, ErroApi } from '../api';
 import { fecharDevolucao } from '../devolucao';
-import { type Ferramenta } from '../ferramentas';
+import { type Ferramenta, situacaoDe } from '../ferramentas';
 import { dataCurta, type Resultado } from '../historico';
 import { mostrarAviso, retiradaRegistrada } from '../retirada';
 import FotoFerramenta from './FotoFerramenta.vue';
@@ -43,7 +43,8 @@ onMounted(async () => {
   }
 });
 
-// Sugestões só trazem Ferramentas que estão fora: só essas podem voltar.
+// Sugestões só trazem Ferramentas que estão fora (inclusive Atrasadas): só essas podem voltar.
+// A busca vem em "todas" para incluir as Atrasadas, que têm situação própria; o filtro abaixo deixa só Fora e Atrasada.
 let esperaBusca: ReturnType<typeof setTimeout> | undefined;
 watch(busca, () => {
   clearTimeout(esperaBusca);
@@ -54,9 +55,11 @@ watch(busca, () => {
       return;
     }
 
-    const params = new URLSearchParams({ situacao: 'fora', texto });
+    const params = new URLSearchParams({ situacao: 'todas', texto });
     const resposta = await chamarApi<{ itens: Ferramenta[] }>(`/ferramentas?${params}`).catch(() => null);
-    sugestoes.value = resposta?.itens ?? [];
+    sugestoes.value = (resposta?.itens ?? []).filter(
+      (ferramenta) => ferramenta.situacao === 'fora' || ferramenta.situacao === 'atrasada',
+    );
   }, 300);
 });
 
@@ -163,6 +166,9 @@ async function registrar() {
             <button type="button" class="opcao" @click="escolher(item)">
               <span class="num">{{ item.numero }}</span>
               <span class="nome"><b>{{ item.nome }}</b></span>
+              <span v-if="item.situacao === 'atrasada'" class="badge" :class="situacaoDe(item.situacao).classe">
+                {{ situacaoDe(item.situacao).rotulo }}
+              </span>
               <span class="small muted">{{ comQuemDesde(item) }}</span>
             </button>
           </li>
@@ -187,6 +193,9 @@ async function registrar() {
           <div class="texto">
             <span class="num">{{ escolhida.numero }}</span>
             <b>{{ escolhida.nome }}</b>
+            <span v-if="escolhida.situacao === 'atrasada'" class="badge" :class="situacaoDe(escolhida.situacao).classe">
+              {{ situacaoDe(escolhida.situacao).rotulo }}
+            </span>
             <span class="small muted">{{ comQuemDesde(escolhida) }}</span>
           </div>
           <button type="button" class="link-botao" @click="trocar">Trocar</button>
