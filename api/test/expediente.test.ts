@@ -19,14 +19,14 @@ describe('prazoDaRetirada', () => {
     expect(prazoDaRetirada('2026-10-27T22:30:00.000Z').toISOString()).toBe('2026-10-28T22:00:00.000Z');
   });
 
-  it('Retirada no sábado depois das 13h vale o fim do próximo Expediente (segunda 19h)', () => {
+  it('Retirada no sábado depois das 13h vale o fim do próximo Expediente (terça 19h, pois segunda 2/11 é Finados)', () => {
     // Sábado 14h SP
-    expect(prazoDaRetirada('2026-10-31T17:00:00.000Z').toISOString()).toBe('2026-11-02T22:00:00.000Z');
+    expect(prazoDaRetirada('2026-10-31T17:00:00.000Z').toISOString()).toBe('2026-11-03T22:00:00.000Z');
   });
 
-  it('Retirada no domingo vale o fim do próximo Expediente (segunda 19h)', () => {
+  it('Retirada no domingo vale o fim do próximo Expediente (terça 19h, pois segunda 2/11 é Finados)', () => {
     // Domingo 10h SP
-    expect(prazoDaRetirada('2026-11-01T13:00:00.000Z').toISOString()).toBe('2026-11-02T22:00:00.000Z');
+    expect(prazoDaRetirada('2026-11-01T13:00:00.000Z').toISOString()).toBe('2026-11-03T22:00:00.000Z');
   });
 });
 
@@ -52,23 +52,55 @@ describe('estaAtrasada', () => {
     expect(estaAtrasada(retirada, new Date('2026-10-28T22:01:00.000Z'))).toBe(true); // quarta 19h01 SP
   });
 
-  it('Retirada de sábado às 14h: Fora até segunda 19h', () => {
+  it('Retirada de sábado às 14h: Fora até terça 19h (segunda 2/11 é Finados)', () => {
     const retirada = '2026-10-31T17:00:00.000Z';
 
-    expect(estaAtrasada(retirada, new Date('2026-11-02T21:59:00.000Z'))).toBe(false); // segunda 18h59 SP
-    expect(estaAtrasada(retirada, new Date('2026-11-02T22:01:00.000Z'))).toBe(true); // segunda 19h01 SP
+    expect(estaAtrasada(retirada, new Date('2026-11-03T21:59:00.000Z'))).toBe(false); // terça 18h59 SP
+    expect(estaAtrasada(retirada, new Date('2026-11-03T22:01:00.000Z'))).toBe(true); // terça 19h01 SP
   });
 
-  it('Retirada no domingo: Fora até segunda 19h', () => {
+  it('Retirada no domingo: Fora até terça 19h (segunda 2/11 é Finados)', () => {
     const retirada = '2026-11-01T13:00:00.000Z';
 
-    expect(estaAtrasada(retirada, new Date('2026-11-02T21:59:00.000Z'))).toBe(false);
-    expect(estaAtrasada(retirada, new Date('2026-11-02T22:01:00.000Z'))).toBe(true);
+    expect(estaAtrasada(retirada, new Date('2026-11-03T21:59:00.000Z'))).toBe(false);
+    expect(estaAtrasada(retirada, new Date('2026-11-03T22:01:00.000Z'))).toBe(true);
   });
 
   it('sexta 18h até segunda 8h: Atrasada', () => {
     const retirada = '2026-10-30T21:00:00.000Z'; // sexta 18h SP
 
     expect(estaAtrasada(retirada, new Date('2026-11-02T11:00:00.000Z'))).toBe(true); // segunda 8h SP
+  });
+});
+
+describe('feriados nacionais não são dias de Expediente', () => {
+  it('Retirada no domingo antes do Finados (segunda 2/11, feriado): vale terça 19h', () => {
+    // Domingo 1/11, 10h SP
+    expect(prazoDaRetirada('2026-11-01T13:00:00.000Z').toISOString()).toBe('2026-11-03T22:00:00.000Z');
+  });
+
+  it('Retirada na quinta 19/11 com sexta 20/11 (Consciência Negra) feriada: vale sábado 13h', () => {
+    // Quinta 19/11, 19h30 SP
+    expect(prazoDaRetirada('2026-11-19T22:30:00.000Z').toISOString()).toBe('2026-11-21T16:00:00.000Z');
+  });
+
+  it('Sexta-feira santa (3/4/2026) feriada: Retirada de quinta 19h30 vale sábado 13h', () => {
+    // Quinta 2/4, 19h30 SP
+    expect(prazoDaRetirada('2026-04-02T22:30:00.000Z').toISOString()).toBe('2026-04-04T16:00:00.000Z');
+  });
+
+  it('Corpus Christi (4/6/2026) feriada: Retirada de quarta 19h30 vale sexta 19h', () => {
+    // Quarta 3/6, 19h30 SP
+    expect(prazoDaRetirada('2026-06-03T22:30:00.000Z').toISOString()).toBe('2026-06-05T22:00:00.000Z');
+  });
+
+  it('Retirada no próprio feriado (terça 21/4, Tiradentes) vale quarta 19h', () => {
+    // Terça 21/4, 10h SP
+    expect(prazoDaRetirada('2026-04-21T13:00:00.000Z').toISOString()).toBe('2026-04-22T22:00:00.000Z');
+  });
+
+  it('Carnaval não é feriado nacional: terça 17/2/2026 segue o Expediente normal', () => {
+    // Terça 17/2, 10h SP
+    expect(prazoDaRetirada('2026-02-17T13:00:00.000Z').toISOString()).toBe('2026-02-17T22:00:00.000Z');
   });
 });

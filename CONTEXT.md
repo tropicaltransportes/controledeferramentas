@@ -45,11 +45,11 @@ O registro de que uma Ferramenta retirada voltou ao almoxarifado, marcada como O
 _Avoid_: Retorno, entrada
 
 **Retirada Atrasada**:
-Uma Retirada sem Devolução depois do fim do Expediente do dia em que foi feita.
+Uma Retirada sem Devolução depois do fim do Expediente do dia em que foi feita. Uma Retirada feita fora do Expediente (depois do fechamento, no domingo ou em feriado) vale o fim do próximo Expediente.
 _Avoid_: Pendência, vencida
 
 **Expediente**:
-O horário de funcionamento da oficina: segunda a sexta até 19h e sábado até 13h.
+O horário de funcionamento da oficina: segunda a sexta até 19h e sábado até 13h. Domingo e feriados nacionais não são dias de Expediente.
 _Avoid_: Turno, jornada
 
 **Com Problema**:
